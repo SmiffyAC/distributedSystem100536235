@@ -43,14 +43,17 @@ class Node:
         list_data = sock.recv(1024).decode()
         print(f"Received list data: {list_data}")
 
-        # Pass the list data to authPrimary.py subprocess
-        # process.stdin.write(list_data)
+        file_data = sock.recv(1024).decode()
+        print(f"Received file data: {file_data}")
 
-        # Pass the list data to authPrimary.py subprocess and capture output
-        output, _ = process.communicate(input=list_data)
-        print(f"Output from authPrimary.py: {output}")
+        process.stdin.write("ACTION1" + list_data)
+        process.stdin.flush()
+
+        process.stdin.write("ACTION2" + file_data)
+        process.stdin.flush()
 
         process.stdin.close()
+
 
     def handle_fdn_primary(self, sock):
         # Start fdnPrimary.py process
@@ -68,8 +71,14 @@ class Node:
         # process.stdin.write(list_data)
 
         # Pass the list data to authPrimary.py subprocess and capture output
-        output, _ = process.communicate(input=list_data)
-        print(f"Output from fdnPrimary.py: {output}")
+        # output, _ = process.communicate(input=list_data)
+        # print(f"Output from fdnPrimary.py: {output}")
+
+        # file_data = sock.recv(1024).decode()
+        # print(f"Received file data: {file_data}")
+
+        process.stdin.write("ACTION1" + list_data)
+        # process.stdin.write("ACTION2" + file_data)
 
         process.stdin.close()
 

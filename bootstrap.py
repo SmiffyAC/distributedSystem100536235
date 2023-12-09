@@ -58,6 +58,14 @@ class BootstrapServer:
                 auth_nodes_json = json.dumps(self.subAuthNodes)
                 self.auth_primary_node.sendall(auth_nodes_json.encode('utf-8'))
 
+                file_path = "clientLogins.txt"
+                with open(file_path, 'r') as file:
+                    file_content = file.read()
+                    # encoded = base64.b64encode(data)
+                    # self.auth_primary_node.sendall(encoded)
+                    # print("File sent")
+                self.auth_primary_node.sendall(file_content.encode('utf-8'))
+
             self.fdn_primary_node = self.connected_nodes[1]
             self.fdn_primary_node.sendall(b"fdnPrimary")
 
