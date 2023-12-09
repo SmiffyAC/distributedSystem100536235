@@ -2,7 +2,6 @@ import socket
 import threading
 import json
 
-
 class BootstrapServer:
     def __init__(self, port=8000):
         # Initialize server with host and port
@@ -10,6 +9,8 @@ class BootstrapServer:
         host_ip = socket.gethostbyname(hostname)
         self.host = host_ip
         self.port = port
+        # Set to store connected node addresses
+        self.connected_nodes = set()
         # Dictionary to store registered nodes
         self.nodes = {}
 
@@ -24,24 +25,27 @@ class BootstrapServer:
 
             while True:
                 # Accept new connection
-                client, _ = sock.accept()
-                # Print connected client information
-                print(f"Connected to {client.getpeername()}")
-                # Handle each client connection in a new thread
-                threading.Thread(target=self.handle_node, args=(client,)).start()
+                node, addr = sock.accept()
+                # Handle each node connection in a new thread
+                threading.Thread(target=self.handle_node, args=(node, addr)).start()
 
-    def handle_node(self, client):
+    def handle_node(self, node, addr):
         try:
             # Receive data from node
-            data = client.recv(1024).decode('utf-8')
+            data = node.recv(1024).decode('utf-8')
             # Decode data to JSON
             node_info = json.loads(data)
+            # Check if the node name is 'node' and add to the set
+            if node_info['name'] == 'node':
+                self.connected_nodes.add(addr)
+                print(f"Connected node: {addr}")
+                print(f"Connected nodes: {self.connected_nodes}")
             # Register node information
             self.nodes[node_info['name']] = (node_info['ip'], node_info['port'])
             print(f"Registered node: {node_info}")
         finally:
             # Close the connection
-            client.close()
+            node.close()
 
 
 if __name__ == '__main__':
