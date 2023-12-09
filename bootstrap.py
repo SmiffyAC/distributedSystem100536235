@@ -2,10 +2,13 @@ import socket
 import threading
 import json
 
+
 class BootstrapServer:
     def __init__(self, port=8000):
         # Initialize server with host and port
-        self.host = socket.gethostname()
+        hostname = socket.gethostname()
+        host_ip = socket.gethostbyname(hostname)
+        self.host = host_ip
         self.port = port
         # Dictionary to store registered nodes
         self.nodes = {}
@@ -22,8 +25,10 @@ class BootstrapServer:
             while True:
                 # Accept new connection
                 client, _ = sock.accept()
+                # Print connected client information
+                print(f"Connected to {client.getpeername()}")
                 # Handle each client connection in a new thread
-                threading.Thread(target=self.handle_node, args=(client,)).start()
+                # threading.Thread(target=self.handle_node, args=(client,)).start()
 
     # def handle_node(self, client):
     #     try:
@@ -37,6 +42,7 @@ class BootstrapServer:
     #     finally:
     #         # Close the connection
     #         client.close()
+
 
 if __name__ == '__main__':
     server = BootstrapServer()
