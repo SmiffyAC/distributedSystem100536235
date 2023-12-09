@@ -2,11 +2,16 @@ import socket
 import threading
 import json
 
+
 class BootstrapServer:
     def __init__(self, port=8000):
         self.host = '192.168.0.119'  # Set your server IP address
         self.port = port
         self.connected_nodes = []  # List to store socket objects of connected nodes
+        self.auth_primary_node = None  # Variable to store the authPrimary node
+        self.fdn_primary_node = None  # Variable to store the fdnPrimary node
+        self.subAuthNodes = []  # List to store the subAuth nodes
+        self.subFdnNodes = []  # List to store the subFdn nodes
         self.nodes = {}  # Dictionary to store registered nodes
 
     def start_server(self):
@@ -30,15 +35,27 @@ class BootstrapServer:
                 print(f"Registered node: {node_info}")
 
                 if len(self.connected_nodes) == 2:
-                    self.send_message_to_first_node()
+                    self.reply_to_nodes()
 
         except Exception as e:
             print(f"Error: {e}")
 
-    def send_message_to_first_node(self):
+
+    def reply_to_nodes(self):
         if self.connected_nodes:
-            first_node = self.connected_nodes[0]
-            first_node.sendall(b"authPrimary")
+            self.auth_primary_node = self.connected_nodes[0]
+            self.auth_primary_node.sendall(b"authPrimary")
+
+            # Wait for confirmation from auth_primary_node
+            confirmation = self.auth_primary_node.recv(1024).decode('utf-8')
+            print(f"Confirmation received: {confirmation}")
+
+            # Send JSON data after confirmation
+            self.subAuthNodes.append('subAuth1')
+            self.subAuthNodes.append('subAuth2')
+            auth_nodes_json = json.dumps(self.subAuthNodes)
+            self.auth_primary_node.sendall(auth_nodes_json.encode('utf-8'))
+
 
 if __name__ == '__main__':
     server = BootstrapServer()
