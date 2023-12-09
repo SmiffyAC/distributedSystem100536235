@@ -1,5 +1,12 @@
-import socket
+# authPrimary.py
+import sys
 import json
 
-# Send confirmation back to Bootstrap Server
-print("authPrimary: I am authPrimary")
+
+def main():
+    for line in sys.stdin:
+        print(f"Received data in authPrimary: {line}")
+
+
+if __name__ == '__main__':
+    main()

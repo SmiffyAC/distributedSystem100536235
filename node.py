@@ -26,18 +26,52 @@ class Node:
             print(f"Received response: {response}")
 
             if response == "authPrimary":
-                # Start authPrimary.py process
-                subprocess.run(["python", "authPrimary.py"])
-
-                # Send confirmation back to Bootstrap Server
-                sock.sendall(b"authPrimary setup complete")
+                self.handle_auth_primary(sock)
 
             elif response == "fdnPrimary":
-                # Start fdnPrimary.py process
-                subprocess.run(["python", "fdnPrimary.py"])
+                self.handle_fdn_primary(sock)
 
-                # Send confirmation back to Bootstrap Server
-                sock.sendall(b"fdnPrimary setup complete")
+    def handle_auth_primary(self, sock):
+        # Start authPrimary.py process
+        process = subprocess.Popen(["python", "authPrimary.py"], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                   text=True)
+
+        # Send confirmation back to Bootstrap Server
+        sock.sendall(b"authPrimary setup complete")
+
+        # Wait for list from server
+        list_data = sock.recv(1024).decode()
+        print(f"Received list data: {list_data}")
+
+        # Pass the list data to authPrimary.py subprocess
+        # process.stdin.write(list_data)
+
+        # Pass the list data to authPrimary.py subprocess and capture output
+        output, _ = process.communicate(input=list_data)
+        print(f"Output from authPrimary.py: {output}")
+
+        process.stdin.close()
+
+    def handle_fdn_primary(self, sock):
+        # Start fdnPrimary.py process
+        process = subprocess.Popen(["python", "fdnPrimary.py"], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                   text=True)
+
+        # Send confirmation back to Bootstrap Server
+        sock.sendall(b"fdnPrimary setup complete")
+
+        # Wait for list from server
+        list_data = sock.recv(1024).decode()
+        print(f"Received list data: {list_data}")
+
+        # Pass the list data to authPrimary.py subprocess
+        # process.stdin.write(list_data)
+
+        # Pass the list data to authPrimary.py subprocess and capture output
+        output, _ = process.communicate(input=list_data)
+        print(f"Output from fdnPrimary.py: {output}")
+
+        process.stdin.close()
 
 
 if __name__ == '__main__':

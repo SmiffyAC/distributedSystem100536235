@@ -40,9 +40,9 @@ class BootstrapServer:
         except Exception as e:
             print(f"Error: {e}")
 
-
     def reply_to_nodes(self):
         if self.connected_nodes:
+
             self.auth_primary_node = self.connected_nodes[0]
             self.auth_primary_node.sendall(b"authPrimary")
 
@@ -50,11 +50,14 @@ class BootstrapServer:
             confirmation = self.auth_primary_node.recv(1024).decode('utf-8')
             print(f"Confirmation received: {confirmation}")
 
-            # Send JSON data after confirmation
-            self.subAuthNodes.append('subAuth1')
-            self.subAuthNodes.append('subAuth2')
-            auth_nodes_json = json.dumps(self.subAuthNodes)
-            self.auth_primary_node.sendall(auth_nodes_json.encode('utf-8'))
+            if confirmation == "authPrimary setup complete":
+                # Send JSON data after confirmation
+                self.subAuthNodes.append('subAuth1')
+                self.subAuthNodes.append('subAuth2')
+                auth_nodes_json = json.dumps(self.subAuthNodes)
+                self.auth_primary_node.sendall(auth_nodes_json.encode('utf-8'))
+
+
 
             self.fdn_primary_node = self.connected_nodes[1]
             self.fdn_primary_node.sendall(b"fdnPrimary")
