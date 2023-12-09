@@ -1,6 +1,7 @@
 import socket
 import threading
 import json
+import base64
 
 
 class BootstrapServer:
@@ -57,10 +58,19 @@ class BootstrapServer:
                 auth_nodes_json = json.dumps(self.subAuthNodes)
                 self.auth_primary_node.sendall(auth_nodes_json.encode('utf-8'))
 
-
-
             self.fdn_primary_node = self.connected_nodes[1]
             self.fdn_primary_node.sendall(b"fdnPrimary")
+
+            # Wait for confirmation from auth_primary_node
+            confirmation = self.fdn_primary_node.recv(1024).decode('utf-8')
+            print(f"Confirmation received: {confirmation}")
+
+            if confirmation == "fdnPrimary setup complete":
+                # Send JSON data after confirmation
+                self.subFdnNodes.append('subFdn1')
+                self.subFdnNodes.append('subFdn2')
+                fdn_nodes_json = json.dumps(self.subFdnNodes)
+                self.fdn_primary_node.sendall(fdn_nodes_json.encode('utf-8'))
 
             # Wait for confirmation from auth_primary_node
             confirmation = self.auth_primary_node.recv(1024).decode('utf-8')
