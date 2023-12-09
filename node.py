@@ -2,6 +2,7 @@ import socket
 import json
 import subprocess
 
+
 class Node:
     def __init__(self, name, host='localhost', port=9000):
         # Initialize the client with a name, host, and port
@@ -26,10 +27,18 @@ class Node:
 
             if response == "authPrimary":
                 # Start authPrimary.py process
-                subprocess.Popen(["python", "authPrimary.py"])
+                subprocess.run(["python", "authPrimary.py"])
 
                 # Send confirmation back to Bootstrap Server
                 sock.sendall(b"authPrimary setup complete")
+
+            elif response == "fdnPrimary":
+                # Start fdnPrimary.py process
+                subprocess.run(["python", "fdnPrimary.py"])
+
+                # Send confirmation back to Bootstrap Server
+                sock.sendall(b"fdnPrimary setup complete")
+
 
 if __name__ == '__main__':
     # Create a client instance with a unique name
