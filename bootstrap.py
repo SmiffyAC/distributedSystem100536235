@@ -2,7 +2,6 @@ import socket
 import threading
 import json
 import subprocess
-from playsound import playsound
 
 
 class BootstrapServer:
@@ -92,7 +91,6 @@ class BootstrapServer:
 
                 mp3_file_path = "glossy.mp3"
 
-                # playsound(mp3_file_path)
 
                 with open(mp3_file_path, 'rb') as file:
                     mp3_file_content = file.read()

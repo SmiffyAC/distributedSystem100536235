@@ -1,7 +1,6 @@
 import socket
 import json
 import subprocess
-from playsound import playsound
 import pygame
 import base64
 
@@ -35,6 +34,8 @@ class Node:
                 self.handle_fdn_primary(sock)
 
     def handle_auth_primary(self, sock):
+        node = Node(name="authPrimaryNode", port=9001)
+        node.start_auth_primary_server()
         # Start authPrimary.py process
         process = subprocess.Popen(["python", "authPrimary.py"], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                    text=True)
@@ -69,7 +70,6 @@ class Node:
         list_data = sock.recv(1024).decode()
         print(f"Received list data: {list_data}")
 
-        # playsound("glossy.mp3")
 
         file_size_data = sock.recv(8)
         file_size = int.from_bytes(file_size_data, byteorder='big')
@@ -110,5 +110,5 @@ if __name__ == '__main__':
     # Connect the client to the Bootstrap Server
     bootstrap_ip = '192.168.0.119'
     client.connect_to_bootstrap(bootstrap_ip, 8000)
-    node = Node(name="authPrimaryNode", port=9001)
-    node.start_auth_primary_server()
+    # node = Node(name="authPrimaryNode", port=9001)
+    # node.start_auth_primary_server()
