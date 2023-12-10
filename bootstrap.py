@@ -11,10 +11,12 @@ class BootstrapServer:
         self.port = port
         self.connected_nodes = []  # List to store socket objects of connected nodes
         self.auth_primary_node = None  # Variable to store the authPrimary node
+        self.auth_primary_node_ip = None  # Variable to store the authPrimary node IP
         self.fdn_primary_node = None  # Variable to store the fdnPrimary node
         self.subAuthNodes = []  # List to store the subAuth nodes
         self.subFdnNodes = []  # List to store the subFdn nodes
         self.nodes = {}  # Dictionary to store registered nodes
+        self.client = None
 
     def start_server(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
@@ -31,6 +33,8 @@ class BootstrapServer:
             data = node.recv(1024).decode('utf-8')
             node_info = json.loads(data)
             if node_info['name'] == 'node':
+                if len(self.connected_nodes) == 0:
+                    self.auth_primary_node_ip = node_info['ip']
                 self.connected_nodes.append(node)  # Store the socket object
                 print(f"Connected nodes: {len(self.connected_nodes)}")
                 self.nodes[node_info['name']] = (node_info['ip'], node_info['port'])
@@ -38,6 +42,10 @@ class BootstrapServer:
 
                 if len(self.connected_nodes) == 2:
                     self.reply_to_nodes()
+
+            elif node_info['name'] == 'client':
+                self.client = node
+                self.reply_to_client()
 
         except Exception as e:
             print(f"Error: {e}")
@@ -47,6 +55,7 @@ class BootstrapServer:
 
             self.auth_primary_node = self.connected_nodes[0]
             self.auth_primary_node.sendall(b"authPrimary")
+            print(self.auth_primary_node)
 
             # Wait for confirmation from auth_primary_node
             confirmation = self.auth_primary_node.recv(1024).decode('utf-8')
@@ -96,6 +105,14 @@ class BootstrapServer:
             # Wait for confirmation from auth_primary_node
             confirmation = self.auth_primary_node.recv(1024).decode('utf-8')
             print(f"Confirmation received: {confirmation}")
+
+    def reply_to_client(self):
+        self.client.sendall(b"Welcome Client")
+
+        # auth_data = json.loads(self.auth_primary_node)
+        # auth_ip = auth_data['ip']
+
+        self.client.sendall(self.auth_primary_node_ip.encode('utf-8'))
 
 
 if __name__ == '__main__':
