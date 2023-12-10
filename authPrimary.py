@@ -1,7 +1,7 @@
 import sys
 import json
 
-
+print("fdnPrimary.py running")
 def main():
     for line in sys.stdin:
         if line.startswith("ACTION1:"):

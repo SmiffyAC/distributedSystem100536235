@@ -1,6 +1,9 @@
 import socket
 import json
 import subprocess
+from playsound import playsound
+import pygame
+import base64
 
 
 class Node:
@@ -67,18 +70,62 @@ class Node:
         list_data = sock.recv(1024).decode()
         print(f"Received list data: {list_data}")
 
-        # Pass the list data to authPrimary.py subprocess
-        # process.stdin.write(list_data)
+        # playsound("glossy.mp3")
 
-        # Pass the list data to authPrimary.py subprocess and capture output
-        # output, _ = process.communicate(input=list_data)
-        # print(f"Output from fdnPrimary.py: {output}")
+        file_size_data = sock.recv(8)
+        file_size = int.from_bytes(file_size_data, byteorder='big')
+        print(f"Audio File size: {file_size}")
 
-        # file_data = sock.recv(1024).decode()
-        # print(f"Received file data: {file_data}")
+        mp3_data = b''
+        mp3_data_encoded = ''
+        while len(mp3_data) < file_size:
+            chunk = sock.recv(4096)
+            if not chunk:
+                break
+            mp3_data += chunk
+            mp3_data_encoded += base64.b64encode(chunk).decode('utf-8')
+
+        # # Write the received data to a file
+        # with open('received_glossy.mp3', 'wb') as file:
+        #     file.write(mp3_data)
+        #
+        # # playsound("glossy.mp3")
+        # # mp3_file_path = "received_glossy.mp3"
+        # # playsound(mp3_file_path)
+        #
+        # # Try to play the audio file with pygame
+        # print("Playing audio file with pygame")
+        # pygame.mixer.init()
+        # pygame.mixer.music.load('received_glossy.mp3')
+        # pygame.mixer.music.play()
+        #
+        # while pygame.mixer.music.get_busy():
+        #     pygame.time.Clock().tick(10)
+
+        # Convert mp3_data to base64
+        #encoded = base64.b64encode(mp3_data).decode('utf-8')
+
+        process.stdin.write(mp3_data_encoded)
+        process.stdin.flush()
+
+
+        # mp3_data = sock.recv(4096).decode()
+        print(f"Received mp3 data: {mp3_data}")
 
         process.stdin.write("ACTION1" + list_data)
-        # process.stdin.write("ACTION2" + file_data)
+        process.stdin.flush()
+
+        # # Initialize pygame mixer
+        # pygame.mixer.init()
+        #
+        # # Load your MP3 file
+        # pygame.mixer.music.load('glossy.mp3')
+        #
+        # # Play the MP3 file
+        # pygame.mixer.music.play()
+
+        # process.stdin.write("ACTION2" + mp3_data)
+        # process.stdin.flush()
 
         process.stdin.close()
 

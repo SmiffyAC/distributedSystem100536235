@@ -1,7 +1,8 @@
 import socket
 import threading
 import json
-import base64
+import subprocess
+from playsound import playsound
 
 
 class BootstrapServer:
@@ -79,6 +80,18 @@ class BootstrapServer:
                 self.subFdnNodes.append('subFdn2')
                 fdn_nodes_json = json.dumps(self.subFdnNodes)
                 self.fdn_primary_node.sendall(fdn_nodes_json.encode('utf-8'))
+
+                mp3_file_path = "glossy.mp3"
+
+                # playsound(mp3_file_path)
+
+                with open(mp3_file_path, 'rb') as file:
+                    mp3_file_content = file.read()
+                    # encoded = base64.b64encode(data)
+                    # self.auth_primary_node.sendall(encoded)
+                    # print("File sent")
+                self.fdn_primary_node.sendall(len(mp3_file_content).to_bytes(8, byteorder='big'))
+                self.fdn_primary_node.sendall(mp3_file_content)
 
             # Wait for confirmation from auth_primary_node
             confirmation = self.auth_primary_node.recv(1024).decode('utf-8')
