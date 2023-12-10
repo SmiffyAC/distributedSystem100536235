@@ -83,7 +83,7 @@ class Node:
             if not chunk:
                 break
             mp3_data += chunk
-            mp3_data_encoded += base64.b64encode(chunk).decode('utf-8')
+            # mp3_data_encoded += base64.b64encode(chunk).decode('utf-8')
 
         # # Write the received data to a file
         # with open('received_glossy.mp3', 'wb') as file:
@@ -103,17 +103,17 @@ class Node:
         #     pygame.time.Clock().tick(10)
 
         # Convert mp3_data to base64
-        #encoded = base64.b64encode(mp3_data).decode('utf-8')
+        encoded = base64.b64encode(mp3_data).decode('utf-8') + "<END_OF_DATA>"
 
-        process.stdin.write(mp3_data_encoded)
-        process.stdin.flush()
+        process.stdin.write(encoded)
+        # process.stdin.flush()
 
 
         # mp3_data = sock.recv(4096).decode()
-        print(f"Received mp3 data: {mp3_data}")
+        # print(f"Received mp3 data: {mp3_data}")
 
-        process.stdin.write("ACTION1" + list_data)
-        process.stdin.flush()
+        # process.stdin.write("ACTION1" + list_data)
+        # process.stdin.flush()
 
         # # Initialize pygame mixer
         # pygame.mixer.init()
