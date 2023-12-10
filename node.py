@@ -91,6 +91,18 @@ class Node:
 
         process.stdin.close()
 
+    def start_auth_primary_server(self):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind((self.host, self.port))  # Use the Node's host and port
+            s.listen()
+            print(f"Node acting as Auth Primary listening on {self.host}:{self.port}")
+            conn, addr = s.accept()
+            with conn:
+                print(f"Connected by client at {addr}")
+                client_response = conn.recv(1024)
+                if client_response == b"token":
+                    conn.sendall(b"token handling will be added later")
+
 
 if __name__ == '__main__':
     # Create a client instance with a unique name
@@ -98,3 +110,5 @@ if __name__ == '__main__':
     # Connect the client to the Bootstrap Server
     bootstrap_ip = '192.168.0.119'
     client.connect_to_bootstrap(bootstrap_ip, 8000)
+    node = Node(name="authPrimaryNode", port=9001)
+    node.start_auth_primary_server()

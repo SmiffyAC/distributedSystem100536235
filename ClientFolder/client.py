@@ -58,7 +58,9 @@ class Client:
             s.connect((auth_primary_ip, 9001))
             print(f"Connected to Auth Primary at {auth_primary_ip}:{9001}")
             # Send data or perform actions as needed
-            s.sendall(b"Hello Auth Primary")
+            s.sendall(b"token")
+            authPrimary_reponse = s.recv(1024).decode()
+            print("AuthPrimary:" + authPrimary_reponse)
 
 
 if __name__ == '__main__':
