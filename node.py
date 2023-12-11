@@ -7,7 +7,7 @@ import threading
 
 
 class Node:
-    def __init__(self, name, host='localhost', port=9000):
+    def __init__(self, name, port=9000):
         # Initialize the client with a name, host, and port
         node_name = socket.gethostname()
         node_ip = socket.gethostbyname(node_name)
