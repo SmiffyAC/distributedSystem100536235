@@ -3,6 +3,7 @@ import json
 import subprocess
 import pygame
 import base64
+import threading
 
 
 class Node:
@@ -35,7 +36,7 @@ class Node:
 
     def handle_auth_primary(self, sock):
         node = Node(name="authPrimaryNode", port=9001)
-        node.start_auth_primary_server()
+        threading.Thread(target=node.start_auth_primary_server).start()
         # Start authPrimary.py process
         process = subprocess.Popen(["python", "authPrimary.py"], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                    text=True)
@@ -59,6 +60,8 @@ class Node:
         process.stdin.close()
 
     def handle_fdn_primary(self, sock):
+        # node = Node(name="fdnPrimaryNode", port=9001)
+        # threading.Thread(target=node.start_fdn_primary_server).start()
         # Start fdnPrimary.py process
         process = subprocess.Popen(["python", "fdnPrimary.py"], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                    text=True)
@@ -102,6 +105,18 @@ class Node:
                 client_response = conn.recv(1024)
                 if client_response == b"token":
                     conn.sendall(b"token handling will be added later")
+
+    def start_fdn_primary_server(self):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind((self.host, self.port))  # Use the Node's host and port
+            s.listen()
+            print(f"Node acting as FDN Primary listening on {self.host}:{self.port}")
+            conn, addr = s.accept()
+            with conn:
+                print(f"Connected by client at {addr}")
+                # client_response = conn.recv(1024)
+                # if client_response == b"token":
+                #     conn.sendall(b"token handling will be added later")
 
 
 if __name__ == '__main__':
