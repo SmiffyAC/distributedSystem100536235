@@ -123,7 +123,8 @@ if __name__ == '__main__':
     # Create a client instance with a unique name
     client = Node(name="node")
     # Connect the client to the Bootstrap Server
-    bootstrap_ip = '192.168.0.119'
-    client.connect_to_bootstrap(bootstrap_ip, 8000)
+    # bootstrap_ip = '192.168.0.119'
+    bootstrap_ip = '172.26.61.101'  # IP ADDRESS AT LIBRARY
+    client.connect_to_bootstrap(bootstrap_ip, 50000)
     # node = Node(name="authPrimaryNode", port=9001)
     # node.start_auth_primary_server()

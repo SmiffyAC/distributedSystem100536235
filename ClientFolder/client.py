@@ -7,7 +7,7 @@ import base64
 
 
 class Client:
-    def __init__(self, name, host='localhost', port=9000):
+    def __init__(self, name, port=9000):
         # Initialize the client with a name, host, and port
         client_name = socket.gethostname()
         client_ip = socket.gethostbyname(client_name)
@@ -67,5 +67,6 @@ if __name__ == '__main__':
     # Create a client instance with a unique name
     client = Client(name="client")
     # Connect the client to the Bootstrap Server
-    bootstrap_ip = '192.168.0.119'
-    client.connect_to_bootstrap(bootstrap_ip, 8000)
+    # bootstrap_ip = '192.168.0.119'
+    bootstrap_ip = '172.26.61.101'  # IP ADDRESS AT LIBRARY
+    client.connect_to_bootstrap(bootstrap_ip, 50000)

@@ -5,8 +5,9 @@ import subprocess
 
 
 class BootstrapServer:
-    def __init__(self, port=8000):
-        self.host = '192.168.0.119'  # Set your server IP address
+    def __init__(self, port=50000):
+        # self.host = '192.168.0.119'  # Set your server IP address
+        self.host = '172.26.61.101'  # IP ADDRESS AT LIBRARY
         self.port = port
         self.connected_nodes = []  # List to store socket objects of connected nodes
         self.auth_primary_node = None  # Variable to store the authPrimary node
@@ -92,7 +93,6 @@ class BootstrapServer:
                 self.fdn_primary_node.sendall(fdn_nodes_json.encode('utf-8'))
 
                 mp3_file_path = "glossy.mp3"
-
 
                 with open(mp3_file_path, 'rb') as file:
                     mp3_file_content = file.read()
