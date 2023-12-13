@@ -43,7 +43,6 @@ class Node:
                 print(f"Received response: {response}")
 
                 if response == "authPrimary":
-
                     self.handle_auth_primary(sock)
 
                 elif response == "fdnPrimary":
@@ -113,38 +112,91 @@ class Node:
                 print(f"Received response: {response2}")
 
     def handle_fdn_primary(self, sock):
-        # node = Node(name="fdnPrimaryNode", port=9001)
-        # threading.Thread(target=node.start_fdn_primary_server).start()
-        # Start fdnPrimary.py process
-        process = subprocess.Popen(["python", "fdnPrimary.py"], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                   text=True)
 
         # Send confirmation back to Bootstrap Server
         sock.sendall(b"fdnPrimary setup complete")
 
         # Wait for list from server
-        list_data = sock.recv(1024).decode()
-        print(f"Received list data: {list_data}")
+        client_list_data = sock.recv(1024).decode()
+        print(f"Received list data: {client_list_data}")
 
-        file_size_data = sock.recv(8)
-        file_size = int.from_bytes(file_size_data, byteorder='big')
-        print(f"Audio File size: {file_size}")
+        audio_file_size_data = sock.recv(8)
+        audio_file_size = int.from_bytes(audio_file_size_data, byteorder='big')
+        print(f"Audio File size: {audio_file_size}")
 
         mp3_data = b''
         mp3_data_encoded = ''
-        while len(mp3_data) < file_size:
+        while len(mp3_data) < audio_file_size:
             chunk = sock.recv(4096)
             if not chunk:
                 break
             mp3_data += chunk
 
         # Convert mp3_data to base64
-        encoded = base64.b64encode(mp3_data).decode('utf-8') + "<END_OF_DATA>"
+        # encoded = base64.b64encode(mp3_data).decode('utf-8') + "<END_OF_DATA>"
 
-        process.stdin.write(encoded)
-        # process.stdin.flush()
+        # start auth process
+        auth_ip = self.host
+        auth_port = self.port
+        pid = subprocess.Popen([sys.executable, "fdnPrimary.py", auth_ip, str(auth_port)],
+                                   creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NEW_CONSOLE).pid
 
-        process.stdin.close()
+        threading.Thread(target=self.speak_to_fdn_primary, args=(client_list_data, audio_file_size, mp3_data)).start()
+
+        # # node = Node(name="fdnPrimaryNode", port=9001)
+        # # threading.Thread(target=node.start_fdn_primary_server).start()
+        # # Start fdnPrimary.py process
+        # process = subprocess.Popen(["python", "fdnPrimary.py"], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+        #                            text=True)
+        #
+        # # Send confirmation back to Bootstrap Server
+        # sock.sendall(b"fdnPrimary setup complete")
+        #
+        # # Wait for list from server
+        # list_data = sock.recv(1024).decode()
+        # print(f"Received list data: {list_data}")
+        #
+        # audio_file_size_data = sock.recv(8)
+        # audio_file_size = int.from_bytes(audio_file_size_data, byteorder='big')
+        # print(f"Audio File size: {audio_file_size}")
+        #
+        # mp3_data = b''
+        # mp3_data_encoded = ''
+        # while len(mp3_data) < audio_file_size:
+        #     chunk = sock.recv(4096)
+        #     if not chunk:
+        #         break
+        #     mp3_data += chunk
+        #
+        # # Convert mp3_data to base64
+        # encoded = base64.b64encode(mp3_data).decode('utf-8') + "<END_OF_DATA>"
+        #
+        # process.stdin.write(encoded)
+        # # process.stdin.flush()
+        #
+        # process.stdin.close()
+
+    def speak_to_fdn_primary(self, client_list_data, audio_file_size, mp3_data):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.bind((self.host, self.port))
+            sock.listen()
+            print(f"Waiting for fdnPrimary process on {self.host}:{self.port}")
+
+            while True:
+                node, addr = sock.accept()
+
+                response = node.recv(1024).decode()
+                print(f"Received response: {response}")
+
+                node.sendall(client_list_data.encode('utf-8'))
+
+                node.sendall(audio_file_size.to_bytes(8, byteorder='big'))
+
+                node.sendall(mp3_data)
+                # threading.Thread(target=self.handle_node, args=(node, addr)).start()
+
+                response2 = node.recv(1024).decode()
+                print(f"Received response: {response2}")
 
     def start_auth_primary_server(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:

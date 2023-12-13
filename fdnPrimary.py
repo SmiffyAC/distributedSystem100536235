@@ -1,51 +1,52 @@
+#  I NEED TO CONNECT BACK TO THE NODE THAT JUST CREATED ME USING THE IP AND PORT PASSED TO ME.
+#  THEN ONCE A CONNECTION HAS BEEN MADE I NEED TO LISTEN TO RECEIVE SOMETHING.
+
+import socket
 import sys
-import json
-import base64
 
 
-def main():
-    # for line in sys.stdin:
-    #     if line.startswith("ACTION1:"):
-    #         data = line[len("ACTION1:"):].strip()
-    #         perform_action_1(data)
-    #     elif line.startswith("ACTION2:"):
-    #         data = line[len("ACTION2:"):].strip()
-    #         perform_action_2(data)
-    #     else:
-    #         data += line
-    #         if data.endswith("<END_OF_DATA>"):
-    #             data = data[:len(data) - len("<END_OF_DATA>")]
-    #             perform_action_2(data)
-    #             break
-    #
-    #         data = line
-    #         perform_action_2(data)
-    data = ""
-    while True:
-        line = sys.stdin.read(1)  # Read one character at a time
-        if not line:
-            break
-        data += line
-        if data.endswith("<END_OF_DATA>"):  # Check for delimiter
-            data = data[:-13]  # Remove delimiter
-            perform_action_2(data)
-            break
+def main(node_ip, node_port):
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.connect((node_ip, node_port))
+        # Ready to receive data
+        print("Connected to node at " + node_ip + ":" + str(node_port))
+        # response = s.recv(1024).decode()
+        # print("Received response: " + response)
+        # while True:
+        #     data = s.recv(1024)
+        #     if data:
+        #         # Process received data
+        #         print("Received:", data.decode())
+        #         # Send response
 
+        while True:
+            s.sendall(b"fdnPrimary process has been created")
 
-def perform_action_1(data):
-    print(f"Performing action 1 with data: {data}")
+            client_list_data = s.recv(1024).decode()
+            print(f"Received list data: {client_list_data}")
 
+            audio_file_size_data = s.recv(8)
+            audio_file_size = int.from_bytes(audio_file_size_data, byteorder='big')
+            print(f"Audio File size: {audio_file_size}")
 
-def perform_action_2(data):
-    try:
-        audio_binary_data = base64.b64decode(data)
-        with open('received_glossy.mp3', 'wb') as file:
-            file.write(audio_binary_data)
-        # Rest of your code for playing the audio...
-    except Exception as e:
-        print(f"Error decoding base64 data: {e}")
+            mp3_data = b''
+            mp3_data_encoded = ''
+            while len(mp3_data) < audio_file_size:
+                chunk = s.recv(4096)
+                if not chunk:
+                    break
+                mp3_data += chunk
 
+            print(f"Received mp3 file data")
+
+            s.sendall(b"I have received the data")
 
 
 if __name__ == '__main__':
-    main()
+    # if len(sys.argv) != 3:
+    #     print("Usage: python authPrimary.py <Node IP> <Node Port>")
+    #     sys.exit(1)
+
+    main(sys.argv[1], int(sys.argv[2]))
+
+# ... [rest of the authPrimary.py script] ...
