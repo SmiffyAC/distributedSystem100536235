@@ -43,38 +43,74 @@ class Node:
                 print(f"Received response: {response}")
 
                 if response == "authPrimary":
-                    # start auth process
-                    pid = subprocess.Popen([sys.executable, "test.py", "IP", "PORT"],
-                                           creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NEW_CONSOLE).pid
+
                     self.handle_auth_primary(sock)
 
                 elif response == "fdnPrimary":
                     self.handle_fdn_primary(sock)
 
     def handle_auth_primary(self, sock):
-        node = Node(name="authPrimaryNode", port=9001)
-        threading.Thread(target=node.start_auth_primary_server).start()
-        # Start authPrimary.py process
-        process = subprocess.Popen(["python", "authPrimary.py"], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                   text=True)
 
         # Send confirmation back to Bootstrap Server
         sock.sendall(b"authPrimary setup complete")
 
         # Wait for list from server
-        list_data = sock.recv(1024).decode()
-        print(f"Received list data: {list_data}")
+        client_list_data = sock.recv(1024).decode()
+        print(f"Received list data: {client_list_data}")
 
-        file_data = sock.recv(1024).decode()
-        print(f"Received file data: {file_data}")
+        client_file_data = sock.recv(1024).decode()
+        print(f"Received file data: {client_file_data}")
 
-        process.stdin.write("ACTION1" + list_data)
-        process.stdin.flush()
+        # start auth process
+        auth_ip = self.host
+        auth_port = self.port
+        pid = subprocess.Popen([sys.executable, "authPrimary.py", auth_ip, str(auth_port)],
+                               creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NEW_CONSOLE).pid
 
-        process.stdin.write("ACTION2" + file_data)
-        process.stdin.flush()
+        threading.Thread(target=self.speak_to_auth_primary, args=(client_list_data, client_file_data)).start()
+        # node = Node(name="authPrimaryNode", port=9001)
+        # threading.Thread(target=node.start_auth_primary_server).start()
+        # # Start authPrimary.py process
+        # process = subprocess.Popen(["python", "authPrimary.py"], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+        #                            text=True)
+        #
+        # # Send confirmation back to Bootstrap Server
+        # sock.sendall(b"authPrimary setup complete")
+        #
+        # # Wait for list from server
+        # list_data = sock.recv(1024).decode()
+        # print(f"Received list data: {list_data}")
+        #
+        # client_file_data = sock.recv(1024).decode()
+        # print(f"Received file data: {client_file_data}")
+        #
+        # process.stdin.write("ACTION1" + list_data)
+        # process.stdin.flush()
+        #
+        # process.stdin.write("ACTION2" + client_file_data)
+        # process.stdin.flush()
+        #
+        # process.stdin.close()
 
-        process.stdin.close()
+    def speak_to_auth_primary(self, client_list_data, client_file_data):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.bind((self.host, self.port))
+            sock.listen()
+            print(f"Waiting for authPrimary process on {self.host}:{self.port}")
+
+            while True:
+                node, addr = sock.accept()
+
+                response = node.recv(1024).decode()
+                print(f"Received response: {response}")
+
+                node.sendall(client_list_data.encode('utf-8'))
+
+                node.sendall(client_file_data.encode('utf-8'))
+                # threading.Thread(target=self.handle_node, args=(node, addr)).start()
+
+                response2 = node.recv(1024).decode()
+                print(f"Received response: {response2}")
 
     def handle_fdn_primary(self, sock):
         # node = Node(name="fdnPrimaryNode", port=9001)
@@ -89,7 +125,6 @@ class Node:
         # Wait for list from server
         list_data = sock.recv(1024).decode()
         print(f"Received list data: {list_data}")
-
 
         file_size_data = sock.recv(8)
         file_size = int.from_bytes(file_size_data, byteorder='big')
