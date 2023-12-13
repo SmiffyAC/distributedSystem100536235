@@ -55,6 +55,9 @@ class Client:
         #     if response == 'Welcome Client':
         #         self.handle_auth(sock)
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+
+            # MAKE SURE IT IS USING THE ADDRESS THAT IS PASSED TO IT FROM THE BOOTSTRAP SERVER
+
             s.connect((auth_primary_ip, 9001))
             print(f"Connected to Auth Primary at {auth_primary_ip}:{9001}")
             # Send data or perform actions as needed
@@ -68,5 +71,6 @@ if __name__ == '__main__':
     client = Client(name="client")
     # Connect the client to the Bootstrap Server
     # bootstrap_ip = '192.168.0.119'
-    bootstrap_ip = '172.26.61.101'  # IP ADDRESS AT LIBRARY
+    # bootstrap_ip = '172.26.61.101'  # IP ADDRESS AT LIBRARY
+    bootstrap_ip = '192.168.56.1'  # IP ADDRESS AT MS
     client.connect_to_bootstrap(bootstrap_ip, 50000)

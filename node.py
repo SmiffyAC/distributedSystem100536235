@@ -5,15 +5,28 @@ import pygame
 import base64
 import threading
 
+import os
+import sys
+
 
 class Node:
-    def __init__(self, name, port=9000):
+    def __init__(self, name):
         # Initialize the client with a name, host, and port
         node_name = socket.gethostname()
         node_ip = socket.gethostbyname(node_name)
         self.name = name
         self.host = node_ip
-        self.port = port
+        self.port = self.find_open_port()
+
+    def find_open_port(self):
+        # Iterate through the port range to find the first open port
+        port_range = (50001, 50010)
+        for port in range(port_range[0], port_range[1] + 1):
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                if sock.connect_ex((self.host, port)) != 0:
+                    # Port is open, use this one
+                    return port
+        raise Exception("No open ports available in the specified range.")
 
     def connect_to_bootstrap(self, bootstrap_host, bootstrap_port):
         # Connect to the Bootstrap Server
@@ -25,14 +38,19 @@ class Node:
             sock.sendall(json.dumps(client_info).encode('utf-8'))
             print(f"Connected to Bootstrap Server and sent info: {client_info}")
 
-            response = sock.recv(1024).decode()
-            print(f"Received response: {response}")
+            while True:
 
-            if response == "authPrimary":
-                self.handle_auth_primary(sock)
+                response = sock.recv(1024).decode()
+                print(f"Received response: {response}")
 
-            elif response == "fdnPrimary":
-                self.handle_fdn_primary(sock)
+                if response == "authPrimary":
+                    # start auth process
+                    pid = subprocess.Popen([sys.executable, "test.py", "IP", "PORT"],
+                                           creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NEW_CONSOLE).pid
+                    self.handle_auth_primary(sock)
+
+                elif response == "fdnPrimary":
+                    self.handle_fdn_primary(sock)
 
     def handle_auth_primary(self, sock):
         node = Node(name="authPrimaryNode", port=9001)
@@ -124,7 +142,8 @@ if __name__ == '__main__':
     client = Node(name="node")
     # Connect the client to the Bootstrap Server
     # bootstrap_ip = '192.168.0.119'
-    bootstrap_ip = '172.26.61.101'  # IP ADDRESS AT LIBRARY
+    # bootstrap_ip = '172.26.61.101'  # IP ADDRESS AT LIBRARY
+    bootstrap_ip = '192.168.56.1'  # IP ADDRESS AT MS
     client.connect_to_bootstrap(bootstrap_ip, 50000)
     # node = Node(name="authPrimaryNode", port=9001)
     # node.start_auth_primary_server()
