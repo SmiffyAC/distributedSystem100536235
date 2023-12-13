@@ -25,19 +25,45 @@ def main(node_ip, node_port):
             client_list_data = s.recv(1024).decode()
             print(f"Received list data: {client_list_data}")
 
-            audio_file_size_data = s.recv(8)
-            audio_file_size = int.from_bytes(audio_file_size_data, byteorder='big')
-            print(f"Audio File size: {audio_file_size}")
+            ################################################################################
 
-            mp3_data = b''
-            mp3_data_encoded = ''
-            while len(mp3_data) < audio_file_size:
-                chunk = s.recv(4096)
-                if not chunk:
-                    break
-                mp3_data += chunk
+            number_of_files = int.from_bytes(s.recv(8), byteorder='big')
+            print(f"Expected number of audio files: {number_of_files}")
 
-            print(f"Received mp3 file data")
+            file = 0
+
+            audio_file_size_list = []
+            audio_file_data_list = []
+
+            while file < number_of_files:
+                audio_file_size_data = s.recv(8)
+                audio_file_size = int.from_bytes(audio_file_size_data, byteorder='big')
+                print(f"Audio File size: {audio_file_size}")
+
+                mp3_data = b''
+                mp3_data_encoded = ''
+                while len(mp3_data) < audio_file_size:
+                    chunk = s.recv(min(4096, audio_file_size - len(mp3_data)))
+                    if not chunk:
+                        break
+                    mp3_data += chunk
+
+                audio_file_size_list.append(audio_file_size)
+                audio_file_data_list.append(mp3_data)
+
+            # audio_file_size_data = s.recv(8)
+            # audio_file_size = int.from_bytes(audio_file_size_data, byteorder='big')
+            # print(f"Audio File size: {audio_file_size}")
+            #
+            # mp3_data = b''
+            # mp3_data_encoded = ''
+            # while len(mp3_data) < audio_file_size:
+            #     chunk = s.recv(4096)
+            #     if not chunk:
+            #         break
+            #     mp3_data += chunk
+            #
+            # print(f"Received mp3 file data")
 
             s.sendall(b"I have received the data")
 

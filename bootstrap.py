@@ -94,15 +94,39 @@ class BootstrapServer:
                 fdn_nodes_json = json.dumps(self.subFdnNodes)
                 self.fdn_primary_node.sendall(fdn_nodes_json.encode('utf-8'))
 
-                mp3_file_path = "glossy.mp3"
+                audio_file_paths = ["glossy.mp3", "relaxing.mp3", "risk.mp3"]
 
-                with open(mp3_file_path, 'rb') as file:
-                    mp3_file_content = file.read()
-                    # encoded = base64.b64encode(data)
-                    # self.auth_primary_node.sendall(encoded)
-                    # print("File sent")
-                self.fdn_primary_node.sendall(len(mp3_file_content).to_bytes(8, byteorder='big'))
-                self.fdn_primary_node.sendall(mp3_file_content)
+                number_of_files = len(audio_file_paths)
+                print(f"Number of audio files to send: {number_of_files}")
+
+                # Tell node how many files to expect
+                self.fdn_primary_node.sendall(number_of_files.to_bytes(8, byteorder='big'))
+
+                file_index = 0
+
+                while file_index < number_of_files:
+                    print(audio_file_paths[file_index])
+                    with open(audio_file_paths[file_index], 'rb') as file:
+                        mp3_file_content = b''
+                        mp3_file_content = file.read()
+
+                    self.fdn_primary_node.sendall(len(mp3_file_content).to_bytes(8, byteorder='big'))
+                    print(f"Sent file size: {len(mp3_file_content)}")
+                    self.fdn_primary_node.sendall(mp3_file_content)
+                    file_index += 1
+
+
+
+
+                # mp3_file_path = "glossy.mp3"
+                #
+                # with open(mp3_file_path, 'rb') as file:
+                #     mp3_file_content = file.read()
+                #     # encoded = base64.b64encode(data)
+                #     # self.auth_primary_node.sendall(encoded)
+                #     # print("File sent")
+                # self.fdn_primary_node.sendall(len(mp3_file_content).to_bytes(8, byteorder='big'))
+                # self.fdn_primary_node.sendall(mp3_file_content)
 
             # Wait for confirmation from auth_primary_node
             confirmation = self.auth_primary_node.recv(1024).decode('utf-8')
