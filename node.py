@@ -1,7 +1,6 @@
 import socket
 import json
 import subprocess
-import pygame
 import base64
 import threading
 
@@ -143,7 +142,8 @@ if __name__ == '__main__':
     # Connect the client to the Bootstrap Server
     # bootstrap_ip = '192.168.0.119'
     # bootstrap_ip = '172.26.61.101'  # IP ADDRESS AT LIBRARY
-    bootstrap_ip = '192.168.56.1'  # IP ADDRESS AT MS
+    # bootstrap_ip = '10.30.8.139'  # IP ADDRESS AT MS
+    bootstrap_ip = open('bootstrap_ip.txt', 'r').read().strip()
     client.connect_to_bootstrap(bootstrap_ip, 50000)
     # node = Node(name="authPrimaryNode", port=9001)
     # node.start_auth_primary_server()

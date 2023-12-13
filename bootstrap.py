@@ -8,7 +8,8 @@ class BootstrapServer:
     def __init__(self, port=50000):
         # self.host = '192.168.0.119'  # Set your server IP address
         # self.host = '172.26.61.101'  # IP ADDRESS AT LIBRARY
-        self.host = '192.168.56.1'  # IP ADDRESS AT MS
+        # self.host = '192.168.56.1'  # IP ADDRESS AT MS
+        self.host = open('bootstrap_ip.txt', 'r').read().strip()
         self.port = port
         self.connected_nodes = []  # List to store socket objects of connected nodes
         self.auth_primary_node = None  # Variable to store the authPrimary node
