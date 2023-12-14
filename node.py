@@ -67,29 +67,7 @@ class Node:
                                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NEW_CONSOLE).pid
 
         threading.Thread(target=self.speak_to_auth_primary, args=(client_list_data, client_file_data)).start()
-        # node = Node(name="authPrimaryNode", port=9001)
-        # threading.Thread(target=node.start_auth_primary_server).start()
-        # # Start authPrimary.py process
-        # process = subprocess.Popen(["python", "authPrimary.py"], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-        #                            text=True)
-        #
-        # # Send confirmation back to Bootstrap Server
-        # sock.sendall(b"authPrimary setup complete")
-        #
-        # # Wait for list from server
-        # list_data = sock.recv(1024).decode()
-        # print(f"Received list data: {list_data}")
-        #
-        # client_file_data = sock.recv(1024).decode()
-        # print(f"Received file data: {client_file_data}")
-        #
-        # process.stdin.write("ACTION1" + list_data)
-        # process.stdin.flush()
-        #
-        # process.stdin.write("ACTION2" + client_file_data)
-        # process.stdin.flush()
-        #
-        # process.stdin.close()
+
 
     def speak_to_auth_primary(self, client_list_data, client_file_data):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
@@ -150,21 +128,6 @@ class Node:
             audio_file_size = 0
             file_index += 1
 
-        # audio_file_size_data = sock.recv(8)
-        # audio_file_size = int.from_bytes(audio_file_size_data, byteorder='big')
-        # print(f"Audio File size: {audio_file_size}")
-        #
-        # mp3_data = b''
-        # mp3_data_encoded = ''
-        # while len(mp3_data) < audio_file_size:
-        #     chunk = sock.recv(4096)
-        #     if not chunk:
-        #         break
-        #     mp3_data += chunk
-
-        # Convert mp3_data to base64
-        # encoded = base64.b64encode(mp3_data).decode('utf-8') + "<END_OF_DATA>"
-
         # start auth process
         fdn_ip = self.host
         fdn_port = self.port
@@ -173,38 +136,6 @@ class Node:
 
         threading.Thread(target=self.speak_to_fdn_primary, args=(client_list_data, audio_file_size_list, audio_file_data_list)).start()
 
-        # # node = Node(name="fdnPrimaryNode", port=9001)
-        # # threading.Thread(target=node.start_fdn_primary_server).start()
-        # # Start fdnPrimary.py process
-        # process = subprocess.Popen(["python", "fdnPrimary.py"], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-        #                            text=True)
-        #
-        # # Send confirmation back to Bootstrap Server
-        # sock.sendall(b"fdnPrimary setup complete")
-        #
-        # # Wait for list from server
-        # list_data = sock.recv(1024).decode()
-        # print(f"Received list data: {list_data}")
-        #
-        # audio_file_size_data = sock.recv(8)
-        # audio_file_size = int.from_bytes(audio_file_size_data, byteorder='big')
-        # print(f"Audio File size: {audio_file_size}")
-        #
-        # mp3_data = b''
-        # mp3_data_encoded = ''
-        # while len(mp3_data) < audio_file_size:
-        #     chunk = sock.recv(4096)
-        #     if not chunk:
-        #         break
-        #     mp3_data += chunk
-        #
-        # # Convert mp3_data to base64
-        # encoded = base64.b64encode(mp3_data).decode('utf-8') + "<END_OF_DATA>"
-        #
-        # process.stdin.write(encoded)
-        # # process.stdin.flush()
-        #
-        # process.stdin.close()
 
     def speak_to_fdn_primary(self, client_list_data, audio_file_size_list, audio_file_data_list):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
@@ -235,11 +166,6 @@ class Node:
                     node.sendall(audio_file_data_list[file])
                     file += 1
 
-                # node.sendall(audio_file_size.to_bytes(8, byteorder='big'))
-                #
-                # node.sendall(mp3_data)
-                # threading.Thread(target=self.handle_node, args=(node, addr)).start()
-
                 response2 = node.recv(1024).decode()
                 print(f"Received response: {response2}")
 
@@ -263,18 +189,11 @@ class Node:
             conn, addr = s.accept()
             with conn:
                 print(f"Connected by client at {addr}")
-                # client_response = conn.recv(1024)
-                # if client_response == b"token":
-                #     conn.sendall(b"token handling will be added later")
 
 
 if __name__ == '__main__':
     # Create a client instance with a unique name
     client = Node(name="node")
     # Connect the client to the Bootstrap Server
-    # bootstrap_ip = '192.168.0.119'
-    # bootstrap_ip = '172.26.61.101'  # IP ADDRESS AT LIBRARY
     bootstrap_ip = open('bootstrap_ip.txt', 'r').read().strip()
     client.connect_to_bootstrap(bootstrap_ip, 50000)
-    # node = Node(name="authPrimaryNode", port=9001)
-    # node.start_auth_primary_server()

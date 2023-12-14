@@ -1,6 +1,3 @@
-#  I NEED TO CONNECT BACK TO THE NODE THAT JUST CREATED ME USING THE IP AND PORT PASSED TO ME.
-#  THEN ONCE A CONNECTION HAS BEEN MADE I NEED TO LISTEN TO RECEIVE SOMETHING.
-
 import socket
 import sys
 
@@ -30,14 +27,6 @@ class AuthPrimary:
             s.connect((node_ip, node_port))
             # Ready to receive data
             print("Connected to node at " + node_ip + ":" + str(node_port))
-            # response = s.recv(1024).decode()
-            # print("Received response: " + response)
-            # while True:
-            #     data = s.recv(1024)
-            #     if data:
-            #         # Process received data
-            #         print("Received:", data.decode())
-            #         # Send response
 
             while True:
                 s.sendall(b"authPrimary process has been created")
@@ -52,12 +41,8 @@ class AuthPrimary:
 
 
 if __name__ == '__main__':
-    # if len(sys.argv) != 3:
-    #     print("Usage: python authPrimary.py <Node IP> <Node Port>")
-    #     sys.exit(1)
 
     AuthPrimary = AuthPrimary("authPrimary")
 
     AuthPrimary.main(sys.argv[1], int(sys.argv[2]))
 
-# ... [rest of the authPrimary.py script] ...

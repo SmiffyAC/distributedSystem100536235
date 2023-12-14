@@ -6,9 +6,6 @@ import subprocess
 
 class BootstrapServer:
     def __init__(self, port=50000):
-        # self.host = '192.168.0.119'  # Set your server IP address
-        # self.host = '172.26.61.101'  # IP ADDRESS AT LIBRARY
-        # self.host = '192.168.56.1'  # IP ADDRESS AT MS
         self.host = open('bootstrap_ip.txt', 'r').read().strip()
         self.port = port
         self.connected_nodes = []  # List to store socket objects of connected nodes
@@ -77,9 +74,7 @@ class BootstrapServer:
                 file_path = "clientLogins.txt"
                 with open(file_path, 'r') as file:
                     file_content = file.read()
-                    # encoded = base64.b64encode(data)
-                    # self.auth_primary_node.sendall(encoded)
-                    # print("File sent")
+
                 self.auth_primary_node.sendall(file_content.encode('utf-8'))
 
             # HANDLE FDN PRIMARY NODE
@@ -118,28 +113,12 @@ class BootstrapServer:
                     self.fdn_primary_node.sendall(mp3_file_content)
                     file_index += 1
 
-
-
-
-                # mp3_file_path = "glossy.mp3"
-                #
-                # with open(mp3_file_path, 'rb') as file:
-                #     mp3_file_content = file.read()
-                #     # encoded = base64.b64encode(data)
-                #     # self.auth_primary_node.sendall(encoded)
-                #     # print("File sent")
-                # self.fdn_primary_node.sendall(len(mp3_file_content).to_bytes(8, byteorder='big'))
-                # self.fdn_primary_node.sendall(mp3_file_content)
-
             # Wait for confirmation from auth_primary_node
             confirmation = self.auth_primary_node.recv(1024).decode('utf-8')
             print(f"Confirmation received: {confirmation}")
 
     def reply_to_client(self):
         self.client.sendall(b"Welcome Client")
-
-        # auth_data = json.loads(self.auth_primary_node)
-        # auth_ip = auth_data['ip']
 
         self.client.sendall(self.auth_primary_node_ip.encode('utf-8'))
 
