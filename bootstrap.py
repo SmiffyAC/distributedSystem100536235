@@ -45,6 +45,9 @@ class BootstrapServer:
                 if len(self.connected_nodes) == 2:
                     self.reply_to_nodes()
 
+                elif len(self.connected_nodes) == 6:
+                    self.reply_to_subs()
+
             elif node_info['name'] == 'client':
                 self.client = node
                 self.reply_to_client()
@@ -139,6 +142,16 @@ class BootstrapServer:
         # auth_ip = auth_data['ip']
 
         self.client.sendall(self.auth_primary_node_ip.encode('utf-8'))
+
+
+    def reply_to_subs(self):
+        if self.connected_nodes:
+
+            node_index = 2
+
+            while node_index < len(self.connected_nodes):
+                self.connected_nodes[node_index].sendall(b"sub")
+                node_index += 1
 
 
 if __name__ == '__main__':

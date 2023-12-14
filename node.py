@@ -166,9 +166,9 @@ class Node:
         # encoded = base64.b64encode(mp3_data).decode('utf-8') + "<END_OF_DATA>"
 
         # start auth process
-        auth_ip = self.host
-        auth_port = self.port
-        pid = subprocess.Popen([sys.executable, "fdnPrimary.py", auth_ip, str(auth_port)],
+        fdn_ip = self.host
+        fdn_port = self.port
+        pid = subprocess.Popen([sys.executable, "fdnPrimary.py", fdn_ip, str(fdn_port)],
                                    creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NEW_CONSOLE).pid
 
         threading.Thread(target=self.speak_to_fdn_primary, args=(client_list_data, audio_file_size_list, audio_file_data_list)).start()
@@ -214,6 +214,9 @@ class Node:
 
             while True:
                 node, addr = sock.accept()
+
+                # Print the address and port of the client connected to the node
+                print(f"Connected by client at {addr}")
 
                 response = node.recv(1024).decode()
                 print(f"Received response: {response}")
