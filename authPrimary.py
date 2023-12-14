@@ -10,7 +10,7 @@ class AuthPrimary:
         self.name = name
         self.host = node_ip
         self.port = self.find_open_port()
-        print(f"Node IP: {self.host}, Node Port: {self.port}")
+        print(f"AuthPrimary set up on - Node IP: {self.host}, Node Port: {self.port}")
 
     def find_open_port(self):
         # Iterate through the port range to find the first open port
@@ -22,9 +22,10 @@ class AuthPrimary:
                     return port
         raise Exception("No open ports available in the specified range.")
 
-    def main(self, node_ip, node_port):
+    def connect_to_founding_node(self, node_ip, node_port):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.connect((node_ip, node_port))
+            print(f"22222 AuthPrimary set up on - Node IP: {self.host}, Node Port: {self.port}")
             # Ready to receive data
             print("Connected to node at " + node_ip + ":" + str(node_port))
 
@@ -42,7 +43,7 @@ class AuthPrimary:
 
 if __name__ == '__main__':
 
-    AuthPrimary = AuthPrimary("authPrimary")
+    AuthPrimary = AuthPrimary(name="authPrimary")
 
-    AuthPrimary.main(sys.argv[1], int(sys.argv[2]))
+    AuthPrimary.connect_to_founding_node(sys.argv[1], int(sys.argv[2]))
 

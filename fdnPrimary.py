@@ -3,6 +3,7 @@ import sys
 
 
 def main(node_ip, node_port):
+
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.connect((node_ip, node_port))
         # Ready to receive data
@@ -43,7 +44,10 @@ def main(node_ip, node_port):
             s.sendall(b"I have received the data")
 
 
+
+
 if __name__ == '__main__':
 
     main(sys.argv[1], int(sys.argv[2]))
+
 

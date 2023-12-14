@@ -68,7 +68,6 @@ class Node:
 
         threading.Thread(target=self.speak_to_auth_primary, args=(client_list_data, client_file_data)).start()
 
-
     def speak_to_auth_primary(self, client_list_data, client_file_data):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             sock.bind((self.host, self.port))
@@ -77,6 +76,8 @@ class Node:
 
             while True:
                 node, addr = sock.accept()
+
+                print(f"Connected by authPrimary at {addr}")
 
                 response = node.recv(1024).decode()
                 print(f"Received response: {response}")
@@ -132,10 +133,10 @@ class Node:
         fdn_ip = self.host
         fdn_port = self.port
         pid = subprocess.Popen([sys.executable, "fdnPrimary.py", fdn_ip, str(fdn_port)],
-                                   creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NEW_CONSOLE).pid
+                               creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NEW_CONSOLE).pid
 
-        threading.Thread(target=self.speak_to_fdn_primary, args=(client_list_data, audio_file_size_list, audio_file_data_list)).start()
-
+        threading.Thread(target=self.speak_to_fdn_primary,
+                         args=(client_list_data, audio_file_size_list, audio_file_data_list)).start()
 
     def speak_to_fdn_primary(self, client_list_data, audio_file_size_list, audio_file_data_list):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
@@ -147,7 +148,7 @@ class Node:
                 node, addr = sock.accept()
 
                 # Print the address and port of the client connected to the node
-                print(f"Connected by client at {addr}")
+                print(f"Connected by fdnPrimary at {addr}")
 
                 response = node.recv(1024).decode()
                 print(f"Received response: {response}")
