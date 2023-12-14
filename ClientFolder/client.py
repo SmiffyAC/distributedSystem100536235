@@ -1,19 +1,29 @@
 import socket
 import json
 import subprocess
-from playsound import playsound
-import pygame
+# from playsound import playsound
+# import pygame
 import base64
 
 
 class Client:
-    def __init__(self, name, port=9000):
+    def __init__(self, name):
         # Initialize the client with a name, host, and port
         client_name = socket.gethostname()
         client_ip = socket.gethostbyname(client_name)
         self.name = name
         self.host = client_ip
-        self.port = port
+        self.port = self.find_open_port()
+
+    def find_open_port(self):
+        # Iterate through the port range to find the first open port
+        port_range = (50001, 50010)
+        for port in range(port_range[0], port_range[1] + 1):
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                if sock.connect_ex((self.host, port)) != 0:
+                    # Port is open, use this one
+                    return port
+        raise Exception("No open ports available in the specified range.")
 
     def connect_to_bootstrap(self, bootstrap_host, bootstrap_port):
         # Connect to the Bootstrap Server
@@ -73,4 +83,5 @@ if __name__ == '__main__':
     # bootstrap_ip = '192.168.0.119'
     # bootstrap_ip = '172.26.61.101'  # IP ADDRESS AT LIBRARY
     bootstrap_ip = '192.168.56.1'  # IP ADDRESS AT MS
+    # client.connect_to_bootstrap(bootstrap_ip, 50000)
     client.connect_to_bootstrap(bootstrap_ip, 50000)

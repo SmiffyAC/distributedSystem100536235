@@ -6,6 +6,8 @@ import threading
 
 import os
 import sys
+# from netifaces import interfaces, ifaddresses, AF_INET
+
 
 
 class Node:
@@ -28,6 +30,7 @@ class Node:
         raise Exception("No open ports available in the specified range.")
 
     def connect_to_bootstrap(self, bootstrap_host, bootstrap_port):
+
         # Connect to the Bootstrap Server
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             sock.connect((bootstrap_host, bootstrap_port))
@@ -43,158 +46,37 @@ class Node:
                 print(f"Received response: {response}")
 
                 if response == "authPrimary":
-                    self.handle_auth_primary(sock)
+                    self.handle_authPrimary_creation()
 
                 elif response == "fdnPrimary":
-                    self.handle_fdn_primary(sock)
+                    self.handle_fdnPrimary_creation()
 
-    def handle_auth_primary(self, sock):
+                elif response == "sub":
+                    self.handle_sub_creation()
 
-        # Send confirmation back to Bootstrap Server
-        sock.sendall(b"authPrimary setup complete")
+    def handle_authPrimary_creation(self):
 
-        # Wait for list from server
-        client_list_data = sock.recv(1024).decode()
-        print(f"Received list data: {client_list_data}")
+        print(f"Starting authPrimary.py")
 
-        client_file_data = sock.recv(1024).decode()
-        print(f"Received file data: {client_file_data}")
-
-        # start auth process
-        auth_ip = self.host
-        auth_port = self.port
-        pid = subprocess.Popen([sys.executable, "authPrimary.py", auth_ip, str(auth_port)],
+        pid = subprocess.Popen([sys.executable, "authPrimary.py"],
                                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NEW_CONSOLE).pid
 
-        threading.Thread(target=self.speak_to_auth_primary, args=(client_list_data, client_file_data)).start()
 
-    def speak_to_auth_primary(self, client_list_data, client_file_data):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-            sock.bind((self.host, self.port))
-            sock.listen()
-            print(f"Waiting for authPrimary process on {self.host}:{self.port}")
+    def handle_fdnPrimary_creation(self):
 
-            while True:
-                node, addr = sock.accept()
+        print(f"Starting fdnPrimary.py")
 
-                print(f"Connected by authPrimary at {addr}")
-
-                response = node.recv(1024).decode()
-                print(f"Received response: {response}")
-
-                node.sendall(client_list_data.encode('utf-8'))
-
-                node.sendall(client_file_data.encode('utf-8'))
-                # threading.Thread(target=self.handle_node, args=(node, addr)).start()
-
-                response2 = node.recv(1024).decode()
-                print(f"Received response: {response2}")
-
-    def handle_fdn_primary(self, sock):
-
-        # Send confirmation back to Bootstrap Server
-        sock.sendall(b"fdnPrimary setup complete")
-
-        # Wait for list from server
-        client_list_data = sock.recv(1024).decode()
-        print(f"Received list data: {client_list_data}")
-
-        number_of_files = int.from_bytes(sock.recv(8), byteorder='big')
-        print(f"Expected number of audio files: {number_of_files}")
-
-        file_index = 0
-
-        audio_file_size_list = []
-        audio_file_data_list = []
-
-        while file_index < number_of_files:
-            # audio_file_size = 0
-            # audio_file_size_data = sock.recv(8)
-            audio_file_size = int.from_bytes(sock.recv(8), byteorder='big')
-            print(f"Audio File size: {audio_file_size}")
-
-            mp3_data = b''
-            mp3_data_encoded = ''
-            while len(mp3_data) < audio_file_size:
-                chunk = sock.recv(min(4096, audio_file_size - len(mp3_data)))
-                if not chunk:
-                    break
-                mp3_data += chunk
-                # print(audio_file_size)
-
-            audio_file_size_list.append(audio_file_size)
-            print(audio_file_size_list)
-            audio_file_data_list.append(mp3_data)
-            print(f"File {file_index} received")
-            audio_file_size = 0
-            file_index += 1
-
-        # start auth process
-        fdn_ip = self.host
-        fdn_port = self.port
-        pid = subprocess.Popen([sys.executable, "fdnPrimary.py", fdn_ip, str(fdn_port)],
+        pid = subprocess.Popen([sys.executable, "fdnPrimary.py"],
                                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NEW_CONSOLE).pid
 
-        threading.Thread(target=self.speak_to_fdn_primary,
-                         args=(client_list_data, audio_file_size_list, audio_file_data_list)).start()
 
-    def speak_to_fdn_primary(self, client_list_data, audio_file_size_list, audio_file_data_list):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-            sock.bind((self.host, self.port))
-            sock.listen()
-            print(f"Waiting for fdnPrimary process on {self.host}:{self.port}")
-
-            while True:
-                node, addr = sock.accept()
-
-                # Print the address and port of the client connected to the node
-                print(f"Connected by fdnPrimary at {addr}")
-
-                response = node.recv(1024).decode()
-                print(f"Received response: {response}")
-
-                node.sendall(client_list_data.encode('utf-8'))
-
-                number_of_files = len(audio_file_data_list)
-
-                # Tell node how many files to expect
-                node.sendall(number_of_files.to_bytes(8, byteorder='big'))
-
-                file = 0
-
-                while file < number_of_files:
-                    node.sendall(audio_file_size_list[file].to_bytes(8, byteorder='big'))
-                    node.sendall(audio_file_data_list[file])
-                    file += 1
-
-                response2 = node.recv(1024).decode()
-                print(f"Received response: {response2}")
-
-    def start_auth_primary_server(self):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.bind((self.host, self.port))  # Use the Node's host and port
-            s.listen()
-            print(f"Node acting as Auth Primary listening on {self.host}:{self.port}")
-            conn, addr = s.accept()
-            with conn:
-                print(f"Connected by client at {addr}")
-                client_response = conn.recv(1024)
-                if client_response == b"token":
-                    conn.sendall(b"token handling will be added later")
-
-    def start_fdn_primary_server(self):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.bind((self.host, self.port))  # Use the Node's host and port
-            s.listen()
-            print(f"Node acting as FDN Primary listening on {self.host}:{self.port}")
-            conn, addr = s.accept()
-            with conn:
-                print(f"Connected by client at {addr}")
-
+    def handle_sub_creation(self):
+        # Needs to start listening for connections from either the fdnPrimary or authPrimary
+        pass
 
 if __name__ == '__main__':
     # Create a client instance with a unique name
-    client = Node(name="node")
+    new_node = Node(name="node")
     # Connect the client to the Bootstrap Server
     bootstrap_ip = open('bootstrap_ip.txt', 'r').read().strip()
-    client.connect_to_bootstrap(bootstrap_ip, 50000)
+    new_node.connect_to_bootstrap(bootstrap_ip, 50000)
