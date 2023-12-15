@@ -6,6 +6,7 @@ import threading
 
 import os
 import sys
+import time
 
 
 class AuthSub:
@@ -19,7 +20,11 @@ class AuthSub:
         self.name = name
         self.host = ip_address_10
         self.port = self.find_open_port()
+        self.tokenSet = {}
         print(f"AuthSub set up on: {self.host}, Node Port: {self.port}")
+
+        print(f"IN INIT - Starting thread for handle_client_connection")
+        threading.Thread(target=self.handle_client_connection).start()
 
     def find_open_port(self):
         # Iterate through the port range to find the first open port
@@ -54,7 +59,8 @@ class AuthSub:
             print(f"Received auth port: {auth_primary_port}")
 
             # threading.Thread(target=self.connect_to_authPrimary).start()
-            self.connect_to_authPrimary(auth_primary_ip, auth_primary_port)
+            # self.connect_to_authPrimary(auth_primary_ip, auth_primary_port)
+            threading.Thread(target=self.connect_to_authPrimary, args=(auth_primary_ip, auth_primary_port)).start()
 
 
     def connect_to_authPrimary(self, auth_primary_ip, auth_primary_port):
@@ -62,15 +68,42 @@ class AuthSub:
 
             s.connect((auth_primary_ip, auth_primary_port))
 
-            while True:
+            s.sendall(b"authSub")
 
-                s.sendall(b"authSub")
+            print(f"Connected to Auth Primary at {auth_primary_ip}:{auth_primary_port}")
 
-                print(f"Connected to Auth Primary at {auth_primary_ip}:{auth_primary_port}")
+            authPrimary_message = s.recv(1024).decode()
+            print(f"Received message from Auth Primary: {authPrimary_message}")
 
-                input("Press Enter to exit...")
+            # Provide the authPrimary with the address and port of the authSub
+            if authPrimary_message == "Address and Port":
+                s.sendall(self.host.encode())
+                print(f"Sent AuthSub address: {self.host}")
+                s.sendall(self.port.to_bytes(8, byteorder='big'))
+                print(f"Sent AuthSub port: {self.port}")
+                # self.handle_client_connection()
+                # threading.Thread(target=self.handle_client_connection).start()
 
+    def handle_client_connection(self):
+        print(f"IN HANDLE_CLIENT_CONNECTION - Inside thread for handle_client_connection")
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.bind((self.host, self.port))
+            sock.listen()
+            print(f"authSub now listening for clients on {self.host}:{self.port}")
 
+            node, addr = sock.accept()
+            print(f"Accepted connection from client with info: {addr}")
+
+            client_message = node.recv(1024).decode()
+            print(f"Received message from client: {client_message}")
+
+            if client_message == 'token':
+                time_stamp = str(time.time())
+                token = str(addr) + time_stamp
+                print(f"Token: {token}")
+                node.sendall(token.encode())
+                print(f"Sent token: {token}")
+                input("Press Enter to exit... - AFTER SENDING TOKEN")
 
 
 if __name__ == '__main__':

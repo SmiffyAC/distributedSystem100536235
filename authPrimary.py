@@ -76,19 +76,21 @@ class AuthPrimary:
                 if connection_message == 'authSub':
                     threading.Thread(target=self.handle_authSub_connection, args=(node, addr)).start()
 
-                if connection_message == 'client':
+                elif connection_message == 'client':
                     threading.Thread(target=self.handle_client_connection, args=(node,)).start()
 
     def handle_authSub_connection(self, sock, addr):
 
         print(f"A new authSub has connected from: {addr}")
 
-        # Get the ip and port from the addr
-        self.authSub_ip = addr[0]
-        self.authSub_port = addr[1]
+        # Receive the authSub address and port
+        sock.sendall(b"Address and Port")
+        print(f"Asked subAuth for address and port")
 
-
-
+        self.authSub_ip = sock.recv(1024).decode()
+        print(f"Received authSub address: {self.authSub_ip}")
+        self.authSub_port = int.from_bytes(sock.recv(8), byteorder='big')
+        print(f"Received authSub port: {self.authSub_port}")
 
     def handle_client_connection(self, sock):
 
