@@ -3,14 +3,16 @@ import threading
 import json
 import subprocess
 
+# import psutil
+# import netifaces as ni
 
 class BootstrapServer:
     def __init__(self, port=50000):
         self.host = open('bootstrap_ip.txt', 'r').read().strip()
         self.port = port
         self.connected_nodes = []  # List to store socket objects of connected nodes
-        self.auth_primary_node = None  # Variable to store the authPrimary node
         self.auth_primary_node_ip = None  # Variable to store the authPrimary node IP
+        self.auth_primary_node_port = None  # Variable to store the authPrimary port
         self.fdn_primary_node = None  # Variable to store the fdnPrimary node
         self.subAuthNodes = []  # List to store the subAuth nodes
         self.subFdnNodes = []  # List to store the subFdn nodes
@@ -18,6 +20,37 @@ class BootstrapServer:
         self.client = None
 
     def start_server(self):
+
+        node_name = socket.gethostname()
+        hostname, aliases, ip_addresses = socket.gethostbyname_ex(node_name)
+
+        # Filter for IP addresses that start with '10'
+        ip_address_10 = next((ip for ip in ip_addresses if ip.startswith('10')), None)
+
+        if ip_address_10:
+            print(f"IP Address starting with '10': {ip_address_10}")
+        else:
+            print("No IP address starting with '10' found.")
+
+        # node_name = socket.gethostname()
+        # node_ip = socket.gethostbyname_ex(node_name)
+        # print(f"Node name: {node_ip}")
+        #
+        # bootstrap_info = socket.getaddrinfo(node_name, 50000)
+        # print(f"Bootstrap info: {bootstrap_info}")
+
+        # # Retrieve and print all IP addresses
+        # ips = self.get_ip_addresses()
+        # for interface, addresses in ips.items():
+        #     print(f"Interface: {interface}, IPv4: {addresses['IPv4']}, IPv6: {addresses['IPv6']}")
+
+        # # Retrieve and print all IP addresses
+        # ips = self.get_ip_addresses()
+        # for interface, addresses in ips.items():
+        #     print(f"Interface: {interface}")
+        #     print(f"  IPv4 addresses: {addresses['IPv4']}")
+        #     print(f"  IPv6 addresses: {addresses['IPv6']}")
+
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             sock.bind((self.host, self.port))
             sock.listen()
@@ -27,13 +60,39 @@ class BootstrapServer:
                 node, addr = sock.accept()
                 threading.Thread(target=self.handle_connection, args=(node, addr)).start()
 
+    # def get_ip_addresses(self):
+    #     ip_addresses = {}
+    #     for interface in ni.interfaces():
+    #         addresses = ni.ifaddresses(interface)
+    #         # Get IPv4 addresses
+    #         ipv4 = addresses.get(ni.AF_INET, [{}])[0].get('addr', 'No IPv4 Address')
+    #         # Get IPv6 addresses
+    #         ipv6 = addresses.get(ni.AF_INET6, [{}])[0].get('addr', 'No IPv6 Address')
+    #         ip_addresses[interface] = {'IPv4': ipv4, 'IPv6': ipv6}
+    #     return ip_addresses
+    #
+
+
+    # def get_ip_addresses(self):
+    #     ip_addresses = {}
+    #     for interface, addrs in psutil.net_if_addrs().items():
+    #         ip_addresses[interface] = {'IPv4': [], 'IPv6': []}
+    #         for addr in addrs:
+    #             if addr.family == socket.AF_INET:
+    #                 ip_addresses[interface]['IPv4'].append(addr.address)
+    #             elif addr.family == socket.AF_INET6:
+    #                 ip_addresses[interface]['IPv6'].append(addr.address)
+    #     return ip_addresses
+
+
+
     def handle_connection(self, node, addr):
         try:
             data = node.recv(1024).decode('utf-8')
             node_info = json.loads(data)
 
             if node_info['name'] == 'node':
-                self.handle_node(node, node_info)
+                self.handle_node(node, node_info, addr)
 
             elif node_info['name'] == 'authPrimary':
                 self.handle_auth_primary(node, node_info)
@@ -47,7 +106,7 @@ class BootstrapServer:
         except Exception as e:
             print(f"Error: {e}")
 
-    def handle_node(self, node, node_info):
+    def handle_node(self, node, node_info, addr):
 
         # Tell the first connected node to be authPrimary
         if len(self.connected_nodes) == 0:
@@ -55,16 +114,14 @@ class BootstrapServer:
             print(len(self.connected_nodes))
             node.sendall(b"authPrimary")
             self.connected_nodes.append(node)  # Store the socket object
-            print(f"Node handling authPrimary creation: {node_info['ip'], node_info['port']}")
-            self.auth_primary_node_ip = (node_info['ip'])
-            print(f"Auth Primary Node IP: {self.auth_primary_node_ip}")
+            print(f"Node handling authPrimary creation: {addr}")
 
         elif len(self.connected_nodes) == 1:
             print("Length of connected nodes: ")
             print(len(self.connected_nodes))
             node.sendall(b"fdnPrimary")
             self.connected_nodes.append(node)  # Store the socket object
-            print(f"Node handling fdnPrimary creation: {node_info['ip'], node_info['port']}")
+            print(f"Node handling fdnPrimary creation: {node_info['ip']}")
 
         else:
             node.sendall(b"sub")
@@ -72,6 +129,11 @@ class BootstrapServer:
             print(f"Node handling a sub creation: {node_info['ip'], node_info['port']}")
 
     def handle_auth_primary(self, sock, node_info):
+
+        self.auth_primary_node_ip = (node_info['ip'])
+        self.auth_primary_node_port = (node_info['port'])
+        print(f"SET Auth Primary Node IP: {self.auth_primary_node_ip}")
+        print(f"SET Auth Primary Node Port: {self.auth_primary_node_port}")
 
         print(f"In handle_auth_primary")
 
@@ -121,7 +183,19 @@ class BootstrapServer:
             file_index += 1
 
     def handle_client(self, sock, node_info):
-        pass
+        sock.sendall(b"Welcome client")
+
+        print(f"Connected Client info: {node_info['ip'], node_info['port']}")
+
+        message = sock.recv(1024).decode()
+        print(f"Received message: {message}")
+
+        if message == 'authPrimary address':
+            # print(f"Received message: {message}")
+            sock.sendall(self.auth_primary_node_ip.encode('utf-8'))
+            print(f"Sent authPrimary address: {self.auth_primary_node_ip}")
+            sock.sendall(self.auth_primary_node_port.to_bytes(8, byteorder='big'))
+            print(f"Sent authPrimary port: {self.auth_primary_node_port}")
 
 
 if __name__ == '__main__':

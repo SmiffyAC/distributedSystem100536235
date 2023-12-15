@@ -12,9 +12,12 @@ class FdnPrimary:
     def __init__(self, name):
         # Initialize the client with a name, host, and port
         node_name = socket.gethostname()
-        node_ip = socket.gethostbyname(node_name)
+        hostname, aliases, ip_addresses = socket.gethostbyname_ex(node_name)
+
+        # Filter for IP addresses that start with '10'
+        ip_address_10 = next((ip for ip in ip_addresses if ip.startswith('10')), None)
         self.name = name
-        self.host = node_ip
+        self.host = ip_address_10
         self.port = self.find_open_port()
         print(f"AuthPrimary set up on: {self.host}, Node Port: {self.port}")
 

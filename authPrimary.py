@@ -12,9 +12,12 @@ class AuthPrimary:
     def __init__(self, name):
         # Initialize the client with a name, host, and port
         node_name = socket.gethostname()
-        node_ip = socket.gethostbyname(node_name)
+        hostname, aliases, ip_addresses = socket.gethostbyname_ex(node_name)
+
+        # Filter for IP addresses that start with '10'
+        ip_address_10 = next((ip for ip in ip_addresses if ip.startswith('10')), None)
         self.name = name
-        self.host = node_ip
+        self.host = ip_address_10
         self.port = self.find_open_port()
         print(f"AuthPrimary set up on: {self.host}, Node Port: {self.port}")
 
@@ -48,17 +51,15 @@ class AuthPrimary:
             client_file_data = sock.recv(1024).decode()
             print(f"Received file data: {client_file_data}")
 
-            threading.Thread(target=self.handle_client_connection).start()
+            threading.Thread(target=self.accept_client_connection).start()
 
             # self.do_somthing_else()
-
-
 
     # def do_somthing_else(self):
     #     # Keep the program running - wait for user input
     #     input("Press Enter to exit...")
 
-    def handle_client_connection(self):
+    def accept_client_connection(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             sock.bind((self.host, self.port))
             sock.listen()
@@ -67,11 +68,13 @@ class AuthPrimary:
             while True:
                 node, addr = sock.accept()
                 print(f"Accepted connection from {addr}")
+                threading.Thread(target=self.handle_client_connection, args=(node,)).start()
 
-                message = sock.recv(1024).decode()
-                print(f"Received message: {message}")
-
-
+    def handle_client_connection(self, sock):
+        message = sock.recv(1024).decode()
+        print(f"Received message: {message}")
+        if message == 'token':
+            sock.sendall(b"WILL ADD SUB AUTH IP LATER")
 
 
 if __name__ == '__main__':

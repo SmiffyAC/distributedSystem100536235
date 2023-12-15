@@ -6,8 +6,9 @@ import threading
 
 import os
 import sys
-# from netifaces import interfaces, ifaddresses, AF_INET
 
+
+# from netifaces import interfaces, ifaddresses, AF_INET
 
 
 class Node:
@@ -17,17 +18,17 @@ class Node:
         node_ip = socket.gethostbyname(node_name)
         self.name = name
         self.host = node_ip
-        self.port = self.find_open_port()
+        # self.port = self.find_open_port()
 
-    def find_open_port(self):
-        # Iterate through the port range to find the first open port
-        port_range = (50001, 50010)
-        for port in range(port_range[0], port_range[1] + 1):
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-                if sock.connect_ex((self.host, port)) != 0:
-                    # Port is open, use this one
-                    return port
-        raise Exception("No open ports available in the specified range.")
+    # def find_open_port(self):
+    #     # Iterate through the port range to find the first open port
+    #     port_range = (50001, 50010)
+    #     for port in range(port_range[0], port_range[1] + 1):
+    #         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+    #             if sock.connect_ex((self.host, port)) != 0:
+    #                 # Port is open, use this one
+    #                 return port
+    #     raise Exception("No open ports available in the specified range.")
 
     def connect_to_bootstrap(self, bootstrap_host, bootstrap_port):
 
@@ -35,7 +36,7 @@ class Node:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             sock.connect((bootstrap_host, bootstrap_port))
             # Prepare the client information as JSON
-            client_info = {"name": self.name, "ip": self.host, "port": self.port}
+            client_info = {"name": self.name, "ip": self.host}
             # Send the client information to the Bootstrap Server
             sock.sendall(json.dumps(client_info).encode('utf-8'))
             print(f"Connected to Bootstrap Server and sent info: {client_info}")
@@ -61,7 +62,6 @@ class Node:
         pid = subprocess.Popen([sys.executable, "authPrimary.py"],
                                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NEW_CONSOLE).pid
 
-
     def handle_fdnPrimary_creation(self):
 
         print(f"Starting fdnPrimary.py")
@@ -69,10 +69,10 @@ class Node:
         pid = subprocess.Popen([sys.executable, "fdnPrimary.py"],
                                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NEW_CONSOLE).pid
 
-
     def handle_sub_creation(self):
         # Needs to start listening for connections from either the fdnPrimary or authPrimary
         pass
+
 
 if __name__ == '__main__':
     # Create a client instance with a unique name
