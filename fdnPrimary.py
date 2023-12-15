@@ -42,37 +42,56 @@ class FdnPrimary:
             sock.sendall(json.dumps(client_info).encode('utf-8'))
             print(f"Connected to Bootstrap Server and sent info: {client_info}")
 
+            client_list_data = sock.recv(1024).decode()
+            print(f"Received list data: {client_list_data}")
+
+            number_of_files = int.from_bytes(sock.recv(8), byteorder='big')
+            print(f"Expected number of audio files: {number_of_files}")
+
+            file = 0
+
+            audio_file_size_list = []
+            audio_file_data_list = []
+
+            while file < number_of_files:
+                audio_file_size_data = sock.recv(8)
+                audio_file_size = int.from_bytes(audio_file_size_data, byteorder='big')
+                print(f"Audio File size: {audio_file_size}")
+
+                mp3_data = b''
+                mp3_data_encoded = ''
+                while len(mp3_data) < audio_file_size:
+                    chunk = sock.recv(min(4096, audio_file_size - len(mp3_data)))
+                    if not chunk:
+                        break
+                    mp3_data += chunk
+
+                audio_file_size_list.append(audio_file_size)
+                print(audio_file_size_list)
+                audio_file_data_list.append(mp3_data)
+                print(f"File {file} received")
+                file += 1
+
+            threading.Thread(target=self.accept_client_connection).start()
+
+
+
+    def accept_client_connection(self):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.bind((self.host, self.port))
+            sock.listen()
+            print(f"fdnPrimary now listening on {self.host}:{self.port}")
+
             while True:
+                node, addr = sock.accept()
+                print(f"Accepted connection from {addr}")
+                threading.Thread(target=self.handle_client_connection, args=(node,)).start()
 
-                client_list_data = sock.recv(1024).decode()
-                print(f"Received list data: {client_list_data}")
-
-                number_of_files = int.from_bytes(sock.recv(8), byteorder='big')
-                print(f"Expected number of audio files: {number_of_files}")
-
-                file = 0
-
-                audio_file_size_list = []
-                audio_file_data_list = []
-
-                while file < number_of_files:
-                    audio_file_size_data = sock.recv(8)
-                    audio_file_size = int.from_bytes(audio_file_size_data, byteorder='big')
-                    print(f"Audio File size: {audio_file_size}")
-
-                    mp3_data = b''
-                    mp3_data_encoded = ''
-                    while len(mp3_data) < audio_file_size:
-                        chunk = sock.recv(min(4096, audio_file_size - len(mp3_data)))
-                        if not chunk:
-                            break
-                        mp3_data += chunk
-
-                    audio_file_size_list.append(audio_file_size)
-                    print(audio_file_size_list)
-                    audio_file_data_list.append(mp3_data)
-                    print(f"File {file} received")
-                    file += 1
+    def handle_client_connection(self, sock):
+        message = sock.recv(1024).decode()
+        print(f"Received message: {message}")
+        if message == 'token':
+            sock.sendall(b"WILL ADD SUB AUTH IP LATER")
 
 
 if __name__ == '__main__':

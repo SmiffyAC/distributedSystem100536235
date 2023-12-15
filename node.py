@@ -52,8 +52,14 @@ class Node:
                 elif response == "fdnPrimary":
                     self.handle_fdnPrimary_creation()
 
-                elif response == "sub":
-                    self.handle_sub_creation()
+                # elif response == "sub":
+                #     self.handle_sub_creation()
+
+                elif response == "subAuth":
+                    self.handle_subAuth_creation()
+
+                elif response == "subFdn":
+                    self.handle_subFdn_creation()
 
     def handle_authPrimary_creation(self):
 
@@ -69,9 +75,23 @@ class Node:
         pid = subprocess.Popen([sys.executable, "fdnPrimary.py"],
                                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NEW_CONSOLE).pid
 
-    def handle_sub_creation(self):
-        # Needs to start listening for connections from either the fdnPrimary or authPrimary
-        pass
+    # def handle_sub_creation(self):
+    #     # Needs to start listening for connections from either the fdnPrimary or authPrimary
+    #     pass
+
+    def handle_subAuth_creation(self):
+
+        print(f"Starting authSub.py")
+
+        pid = subprocess.Popen([sys.executable, "authSub.py"],
+                               creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NEW_CONSOLE).pid
+
+    def handle_subFdn_creation(self):
+
+        print(f"Starting fdnSub.py")
+
+        pid = subprocess.Popen([sys.executable, "fdnSub.py"],
+                               creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NEW_CONSOLE).pid
 
 
 if __name__ == '__main__':

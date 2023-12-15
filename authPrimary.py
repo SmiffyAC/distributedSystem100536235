@@ -19,6 +19,8 @@ class AuthPrimary:
         self.name = name
         self.host = ip_address_10
         self.port = self.find_open_port()
+        self.authSub_ip = None
+        self.authSub_port = None
         print(f"AuthPrimary set up on: {self.host}, Node Port: {self.port}")
 
     def find_open_port(self):
@@ -63,18 +65,44 @@ class AuthPrimary:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             sock.bind((self.host, self.port))
             sock.listen()
-            print(f"Now listening on {self.host}:{self.port}")
+            print(f"authPrimary now listening on {self.host}:{self.port}")
 
             while True:
                 node, addr = sock.accept()
                 print(f"Accepted connection from {addr}")
-                threading.Thread(target=self.handle_client_connection, args=(node,)).start()
+
+                connection_message = node.recv(1024).decode()
+
+                if connection_message == 'authSub':
+                    threading.Thread(target=self.handle_authSub_connection, args=(node, addr)).start()
+
+                if connection_message == 'client':
+                    threading.Thread(target=self.handle_client_connection, args=(node,)).start()
+
+    def handle_authSub_connection(self, sock, addr):
+
+        print(f"A new authSub has connected from: {addr}")
+
+        # Get the ip and port from the addr
+        self.authSub_ip = addr[0]
+        self.authSub_port = addr[1]
+
+
+
 
     def handle_client_connection(self, sock):
-        message = sock.recv(1024).decode()
-        print(f"Received message: {message}")
-        if message == 'token':
-            sock.sendall(b"WILL ADD SUB AUTH IP LATER")
+
+        client_message = sock.recv(1024).decode()
+        print(f"Received message from client: {client_message}")
+
+        if client_message == 'Need authSub address':
+            # LATER THE BELOW WILL BE PUT INTO A LOAD BALANCER
+
+            # Send the ip and port to the authSub
+            sock.sendall(self.authSub_ip.encode())
+            print(f"Sent authSub ip: {self.authSub_ip}")
+            sock.sendall(self.authSub_port.to_bytes(8, byteorder='big'))
+            print(f"Sent authSub port: {self.authSub_port}")
 
 
 if __name__ == '__main__':

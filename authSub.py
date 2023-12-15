@@ -12,9 +12,12 @@ class AuthSub:
     def __init__(self, name):
         # Initialize the client with a name, host, and port
         node_name = socket.gethostname()
-        node_ip = socket.gethostbyname(node_name)
+        hostname, aliases, ip_addresses = socket.gethostbyname_ex(node_name)
+
+        # Filter for IP addresses that start with '10'
+        ip_address_10 = next((ip for ip in ip_addresses if ip.startswith('10')), None)
         self.name = name
-        self.host = node_ip
+        self.host = ip_address_10
         self.port = self.find_open_port()
         print(f"AuthSub set up on: {self.host}, Node Port: {self.port}")
 
@@ -29,7 +32,7 @@ class AuthSub:
         raise Exception("No open ports available in the specified range.")
 
     def connect_to_bootstrap(self, bootstrap_host, bootstrap_port):
-        print(f"AuthPrimary connecting to Bootstrap Server at {bootstrap_host}:{bootstrap_port}")
+        print(f"AuthSub connecting to Bootstrap Server at {bootstrap_host}:{bootstrap_port}")
         # Connect to the Bootstrap Server
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             sock.connect((bootstrap_host, bootstrap_port))
@@ -39,44 +42,39 @@ class AuthSub:
             sock.sendall(json.dumps(client_info).encode('utf-8'))
             print(f"Connected to Bootstrap Server and sent info: {client_info}")
 
-            # HANDLE THE DATA IT WILL RECEIVE FROM THE BOOTSTRAP SERVER
+            # HANDLE THE DATA IT WILL RECEIVE PRIMARY AUTH ADDRESS FROM THE BOOTSTRAP SERVER
 
-            # Wait for list from server
-            client_list_data = sock.recv(1024).decode()
-            print(f"Received list data: {client_list_data}")
+            sock.sendall(b"authPrimary address")
 
-            client_file_data = sock.recv(1024).decode()
-            print(f"Received file data: {client_file_data}")
+            # Wait for auth address from server
+            auth_primary_ip = sock.recv(1024).decode()
+            print(f"Received auth address: {auth_primary_ip}")
 
-            threading.Thread(target=self.handle_client_connection).start()
+            auth_primary_port = int.from_bytes(sock.recv(8), byteorder='big')
+            print(f"Received auth port: {auth_primary_port}")
 
-            # self.do_somthing_else()
+            # threading.Thread(target=self.connect_to_authPrimary).start()
+            self.connect_to_authPrimary(auth_primary_ip, auth_primary_port)
 
 
+    def connect_to_authPrimary(self, auth_primary_ip, auth_primary_port):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 
-    # def do_somthing_else(self):
-    #     # Keep the program running - wait for user input
-    #     input("Press Enter to exit...")
-
-    def handle_client_connection(self):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-            sock.bind((self.host, self.port))
-            sock.listen()
-            print(f"Now listening on {self.host}:{self.port}")
+            s.connect((auth_primary_ip, auth_primary_port))
 
             while True:
-                node, addr = sock.accept()
-                print(f"Accepted connection from {addr}")
 
-                message = sock.recv(1024).decode()
-                print(f"Received message: {message}")
+                s.sendall(b"authSub")
+
+                print(f"Connected to Auth Primary at {auth_primary_ip}:{auth_primary_port}")
+
+                input("Press Enter to exit...")
 
 
 
 
 if __name__ == '__main__':
-
-    new_AuthSub = AuthSub(name="authPrimary")
+    new_AuthSub = AuthSub(name="authSub")
 
     # Connect the client to the Bootstrap Server
     bootstrap_ip = open('bootstrap_ip.txt', 'r').read().strip()

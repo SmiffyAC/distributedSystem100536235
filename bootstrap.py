@@ -103,6 +103,12 @@ class BootstrapServer:
             elif node_info['name'] == 'client':
                 self.handle_client(node, node_info)
 
+            elif node_info['name'] == 'authSub':
+                self.handle_sub_auth(node, node_info)
+
+            elif node_info['name'] == 'fdnSub':
+                self.handle_sub_fdn(node, node_info)
+
         except Exception as e:
             print(f"Error: {e}")
 
@@ -123,10 +129,18 @@ class BootstrapServer:
             self.connected_nodes.append(node)  # Store the socket object
             print(f"Node handling fdnPrimary creation: {node_info['ip']}")
 
-        else:
-            node.sendall(b"sub")
-            self.connected_nodes.append(node)  # Store the socket object
-            print(f"Node handling a sub creation: {node_info['ip'], node_info['port']}")
+        # else:
+        #     node.sendall(b"sub")
+        #     self.connected_nodes.append(node)  # Store the socket object
+        #     print(f"Node handling a sub creation: {node_info['ip'], node_info['port']}")
+
+        elif len(self.connected_nodes) == 2 or len(self.connected_nodes) == 3:
+            node.sendall(b"subAuth")
+            self.connected_nodes.append(node)
+
+        elif len(self.connected_nodes) == 4 or len(self.connected_nodes) == 5:
+            node.sendall(b"subFdn")
+            self.connected_nodes.append(node)
 
     def handle_auth_primary(self, sock, node_info):
 
@@ -138,8 +152,13 @@ class BootstrapServer:
         print(f"In handle_auth_primary")
 
         # Send JSON data
-        self.subAuthNodes.append('subAuth1')
-        self.subAuthNodes.append('subAuth2')
+        # self.subAuthNodes.append('subAuth1')
+        # self.subAuthNodes.append('subAuth2')
+
+        # CURRENTLY ONLY HAVE 1 SUB AUTH
+        if len(self.connected_nodes) == 3:
+            self.subAuthNodes.append(self.connected_nodes[2])
+
         auth_nodes_json = json.dumps(self.subAuthNodes)
         print(f"Auth Nodes JSON to send: {auth_nodes_json}")
         sock.sendall(auth_nodes_json.encode('utf-8'))
@@ -196,6 +215,24 @@ class BootstrapServer:
             print(f"Sent authPrimary address: {self.auth_primary_node_ip}")
             sock.sendall(self.auth_primary_node_port.to_bytes(8, byteorder='big'))
             print(f"Sent authPrimary port: {self.auth_primary_node_port}")
+
+
+    def handle_sub_auth(self, sock, node_info):
+
+        print(f"Connected Client info: {node_info['ip'], node_info['port']}")
+
+        message = sock.recv(1024).decode()
+        print(f"Received message: {message}")
+
+        if message == 'authPrimary address':
+            # print(f"Received message: {message}")
+            sock.sendall(self.auth_primary_node_ip.encode('utf-8'))
+            print(f"Sent authPrimary address: {self.auth_primary_node_ip}")
+            sock.sendall(self.auth_primary_node_port.to_bytes(8, byteorder='big'))
+            print(f"Sent authPrimary port: {self.auth_primary_node_port}")
+
+    def handle_sub_fdn(self, sock, node_info):
+        pass
 
 
 if __name__ == '__main__':
