@@ -6,6 +6,7 @@ import threading
 
 import os
 import sys
+import time
 
 
 class AuthPrimary:
@@ -21,6 +22,8 @@ class AuthPrimary:
         self.port = self.find_open_port()
         self.authSub_ip = None
         self.authSub_port = None
+        self.authSub_list = []
+        self.authSub_file = None
         print(f"AuthPrimary set up on: {self.host}, Node Port: {self.port}")
 
     def find_open_port(self):
@@ -47,11 +50,16 @@ class AuthPrimary:
             # HANDLE THE DATA IT WILL RECEIVE FROM THE BOOTSTRAP SERVER
 
             # Wait for list from server
-            client_list_data = sock.recv(1024).decode()
-            print(f"Received list data: {client_list_data}")
+            # self.authSub_list.append(sock.recv(1024).decode())
+            # print(f"Received list data: {self.authSub_list}")
+            received_list_data = sock.recv(1024).decode()
+            print(f"\nReceived list data: {received_list_data}")
+            auth_sub_info = json.loads(received_list_data)
+            self.authSub_list.append(auth_sub_info)
+            print(f"\nReceived list data: {self.authSub_list}")
 
-            client_file_data = sock.recv(1024).decode()
-            print(f"Received file data: {client_file_data}")
+            self.authSub_file = sock.recv(1024).decode()
+            print(f"Received file data: {self.authSub_file}")
 
             threading.Thread(target=self.accept_client_connection).start()
 
@@ -69,7 +77,7 @@ class AuthPrimary:
 
             while True:
                 node, addr = sock.accept()
-                print(f"Accepted connection from {addr}")
+                print(f"\nAccepted connection from {addr}")
 
                 connection_message = node.recv(1024).decode()
 
@@ -81,7 +89,7 @@ class AuthPrimary:
 
     def handle_authSub_connection(self, sock, addr):
 
-        print(f"A new authSub has connected from: {addr}")
+        print(f"\nA new authSub has connected from: {addr}")
 
         # Receive the authSub address and port
         sock.sendall(b"Address and Port")
@@ -91,6 +99,33 @@ class AuthPrimary:
         print(f"Received authSub address: {self.authSub_ip}")
         self.authSub_port = int.from_bytes(sock.recv(8), byteorder='big')
         print(f"Received authSub port: {self.authSub_port}")
+
+        # print(f"\n")
+        # print(addr[0])
+        # print(addr[1])
+        # print(self.authSub_list[0][0])  # ip
+        # print(self.authSub_list[0][1])  # port
+
+        self.handle_authSub_hearbeat(sock, addr)
+        # threading.Thread(target=self.handle_authSub_hearbeat, args=(sock,)).start()
+
+    def handle_authSub_hearbeat(self, sock, addr):
+        while True:
+            heartbeat_message = sock.recv(1024).decode()
+
+            # heartbeat_sender = self.get_heartbeat_sender(addr)
+            heartbeat_sender = "TEST"
+
+            print(f"Received heartbeat message from {heartbeat_sender}: {heartbeat_message}")
+            time.sleep(5)
+
+    def get_heartbeat_sender(self, addr):
+        for authSub in self.authSub_list:
+            # Check that the ip and port match
+            if int(authSub[1]) == addr[0] and int(authSub[2]) == addr[1]:
+                heartbeat_sender = authSub['name']
+                return heartbeat_sender
+        return None
 
     def handle_client_connection(self, sock):
 

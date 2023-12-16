@@ -3,6 +3,7 @@ import threading
 import json
 import subprocess
 
+
 # import psutil
 # import netifaces as ni
 
@@ -72,7 +73,6 @@ class BootstrapServer:
     #     return ip_addresses
     #
 
-
     # def get_ip_addresses(self):
     #     ip_addresses = {}
     #     for interface, addrs in psutil.net_if_addrs().items():
@@ -84,17 +84,19 @@ class BootstrapServer:
     #                 ip_addresses[interface]['IPv6'].append(addr.address)
     #     return ip_addresses
 
-
-
     def handle_connection(self, node, addr):
         try:
             data = node.recv(1024).decode('utf-8')
             node_info = json.loads(data)
 
             if node_info['name'] == 'node':
+                print(f"\nNode connected with info: {node_info}")
+                print(f"Node connected from: {addr}\n")
                 self.handle_node(node, node_info, addr)
 
             elif node_info['name'] == 'authPrimary':
+                print(f"\nAuth Primary connected with info: {node_info}")
+                print(f"Auth Primary connected from: {addr}\n")
                 self.handle_auth_primary(node, node_info)
 
             elif node_info['name'] == 'fdnPrimary':
@@ -104,6 +106,8 @@ class BootstrapServer:
                 self.handle_client(node, node_info)
 
             elif node_info['name'] == 'authSub':
+                print(f"\nSub Auth connected with info: {node_info}")
+                print(f"Sub Auth connected from: {addr}\n")
                 self.handle_sub_auth(node, node_info)
 
             elif node_info['name'] == 'fdnSub':
@@ -114,6 +118,13 @@ class BootstrapServer:
 
     def handle_node(self, node, node_info, addr):
 
+        # connected_nodes[0] = authPrimary
+        # connected_nodes[1] = authSub1
+        # connected_nodes[2] = authSub2
+        # connected_nodes[3] = fdnPrimary
+        # connected_nodes[4] = fdnSub1
+        # connected_nodes[5] = fdnSub2
+
         # Tell the first connected node to be authPrimary
         if len(self.connected_nodes) == 0:
             print("Length of connected nodes: ")
@@ -122,25 +133,31 @@ class BootstrapServer:
             self.connected_nodes.append(node)  # Store the socket object
             print(f"Node handling authPrimary creation: {addr}")
 
-        elif len(self.connected_nodes) == 1:
+        # Tell the second and third connected node to be AuthSub1 (TEMP)
+        elif len(self.connected_nodes) == 1 or len(self.connected_nodes) == 2:
+            node.sendall(b"subAuth")
+            self.connected_nodes.append(node)
+
+
+        # Tell the fourth connected node to be fdnPrimary (TEMP)
+        elif len(self.connected_nodes) == 3:
             print("Length of connected nodes: ")
             print(len(self.connected_nodes))
             node.sendall(b"fdnPrimary")
             self.connected_nodes.append(node)  # Store the socket object
             print(f"Node handling fdnPrimary creation: {node_info['ip']}")
 
-        # else:
-        #     node.sendall(b"sub")
-        #     self.connected_nodes.append(node)  # Store the socket object
-        #     print(f"Node handling a sub creation: {node_info['ip'], node_info['port']}")
+        # THE BELOW HAS BEEN COMMMENTED OUT SO I CAN TEST THE ABOVE ###############
 
-        elif len(self.connected_nodes) == 2 or len(self.connected_nodes) == 3:
-            node.sendall(b"subAuth")
-            self.connected_nodes.append(node)
+        # elif len(self.connected_nodes) == 2 or len(self.connected_nodes) == 3:
+        #     node.sendall(b"subAuth")
+        #     self.connected_nodes.append(node)
+        #
+        # elif len(self.connected_nodes) == 4 or len(self.connected_nodes) == 5:
+        #     node.sendall(b"subFdn")
+        #     self.connected_nodes.append(node)
 
-        elif len(self.connected_nodes) == 4 or len(self.connected_nodes) == 5:
-            node.sendall(b"subFdn")
-            self.connected_nodes.append(node)
+        ###########################################################################
 
     def handle_auth_primary(self, sock, node_info):
 
@@ -156,19 +173,29 @@ class BootstrapServer:
         # self.subAuthNodes.append('subAuth2')
 
         # CURRENTLY ONLY HAVE 1 SUB AUTH
-        if len(self.connected_nodes) == 3:
-            self.subAuthNodes.append(self.connected_nodes[2])
+        print("Waiting for connected nodes to be 3 (waiting for subAuth1 and subAuth2)")
+        while True:
+            try:
+                if len(self.subAuthNodes) == 2:
+                    auth_nodes_json = json.dumps(self.subAuthNodes)
+                    print(f"Auth Nodes JSON to send: {auth_nodes_json}")
+                    sock.sendall(auth_nodes_json.encode('utf-8'))
 
-        auth_nodes_json = json.dumps(self.subAuthNodes)
-        print(f"Auth Nodes JSON to send: {auth_nodes_json}")
-        sock.sendall(auth_nodes_json.encode('utf-8'))
+                    file_path = "clientLogins.txt"
+                    with open(file_path, 'r') as file:
+                        file_content = file.read()
 
-        file_path = "clientLogins.txt"
-        with open(file_path, 'r') as file:
-            file_content = file.read()
+                    print(f"File content to send: {file_content}")
+                    sock.sendall(file_content.encode('utf-8'))
+                    break
+            except:
+                # Return to top of loop and try again
+                pass
 
-        print(f"File content to send: {file_content}")
-        sock.sendall(file_content.encode('utf-8'))
+        # if len(self.connected_nodes) == 2:
+        #     self.subAuthNodes.append(self.connected_nodes[2])
+
+
 
     def handle_fdn_primary(self, sock, node_info):
 
@@ -216,10 +243,15 @@ class BootstrapServer:
             sock.sendall(self.auth_primary_node_port.to_bytes(8, byteorder='big'))
             print(f"Sent authPrimary port: {self.auth_primary_node_port}")
 
-
     def handle_sub_auth(self, sock, node_info):
 
-        print(f"Connected Client info: {node_info['ip'], node_info['port']}")
+        print(f"Connected subAuth info: {node_info['ip'], node_info['port']}")
+
+        # Generate a name for the subAuth node based on the number of subAuth nodes
+        authsub_name = "authSub" + str(len(self.subAuthNodes) + 1)
+
+        self.subAuthNodes.append({"name": authsub_name, "ip": node_info['ip'], "port": node_info['port']})
+        print(f"Sub Auth Nodes List: {self.subAuthNodes}")
 
         message = sock.recv(1024).decode()
         print(f"Received message: {message}")

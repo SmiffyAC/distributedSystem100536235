@@ -23,8 +23,9 @@ class AuthSub:
         self.tokenSet = {}
         print(f"AuthSub set up on: {self.host}, Node Port: {self.port}")
 
-        print(f"IN INIT - Starting thread for handle_client_connection")
-        threading.Thread(target=self.handle_client_connection).start()
+        # COMMENTED OUT FOR TESTING
+        # print(f"IN INIT - Starting thread for handle_client_connection")
+        # threading.Thread(target=self.handle_client_connection).start()
 
     def find_open_port(self):
         # Iterate through the port range to find the first open port
@@ -53,10 +54,10 @@ class AuthSub:
 
             # Wait for auth address from server
             auth_primary_ip = sock.recv(1024).decode()
-            print(f"Received auth address: {auth_primary_ip}")
+            print(f"Received authPrimary address: {auth_primary_ip}")
 
             auth_primary_port = int.from_bytes(sock.recv(8), byteorder='big')
-            print(f"Received auth port: {auth_primary_port}")
+            print(f"Received authPrimary port: {auth_primary_port}")
 
             # threading.Thread(target=self.connect_to_authPrimary).start()
             # self.connect_to_authPrimary(auth_primary_ip, auth_primary_port)
@@ -64,6 +65,7 @@ class AuthSub:
 
 
     def connect_to_authPrimary(self, auth_primary_ip, auth_primary_port):
+        print(f"\nWaiting for authPrimary to be ready at {auth_primary_ip}:{auth_primary_port}")
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 
             s.connect((auth_primary_ip, auth_primary_port))
@@ -81,8 +83,21 @@ class AuthSub:
                 print(f"Sent AuthSub address: {self.host}")
                 s.sendall(self.port.to_bytes(8, byteorder='big'))
                 print(f"Sent AuthSub port: {self.port}")
+
+                self.send_heartbeat_to_authPrimary(s)
+
+                # threading.Thread(target=self.send_heartbeat_to_authPrimary, args=(s,)).start()
+
+                input("Press Enter to exit... - AFTER SENDING ADDRESS AND PORT")
                 # self.handle_client_connection()
                 # threading.Thread(target=self.handle_client_connection).start()
+
+    def send_heartbeat_to_authPrimary(self, s):
+        print(f"IN SEND_HEARTBEAT_TO_AUTHPRIMARY - Sending heartbeat to Auth Primary")
+        while True:
+            s.sendall(b"heartbeat")
+            print(f"Sent heartbeat to Auth Primary")
+            time.sleep(5)
 
     def handle_client_connection(self):
         print(f"IN HANDLE_CLIENT_CONNECTION - Inside thread for handle_client_connection")
