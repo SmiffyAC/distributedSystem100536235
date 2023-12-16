@@ -21,16 +21,17 @@ class AuthSub:
         self.host = ip_address_10
         self.port = self.find_open_port()
         self.tokenSet = {}
+        self.numOfConnectedClients = 0
         print(f"AuthSub set up on: {self.host}, Node Port: {self.port}")
 
         # COMMENTED OUT FOR TESTING
         # print(f"IN INIT - Starting thread for handle_client_connection")
-        # threading.Thread(target=self.handle_client_connection).start()
+        threading.Thread(target=self.handle_client_connection).start()
 
     def find_open_port(self):
         # Iterate through the port range to find the first open port
         port_range = (50001, 50010)
-        for port in range(port_range[0], port_range[1] + 1):
+        for port in range(port_range[0], port_range[1]):
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
                 if sock.connect_ex((self.host, port)) != 0:
                     # Port is open, use this one
@@ -44,6 +45,7 @@ class AuthSub:
             sock.connect((bootstrap_host, bootstrap_port))
             # Prepare the client information as JSON
             client_info = {"name": self.name, "ip": self.host, "port": self.port}
+            print(f"\nClient info TO SEND: {client_info}")
             # Send the client information to the Bootstrap Server
             sock.sendall(json.dumps(client_info).encode('utf-8'))
             print(f"Connected to Bootstrap Server and sent info: {client_info}")
@@ -95,9 +97,17 @@ class AuthSub:
     def send_heartbeat_to_authPrimary(self, s):
         print(f"IN SEND_HEARTBEAT_TO_AUTHPRIMARY - Sending heartbeat to Auth Primary")
         while True:
-            s.sendall(b"heartbeat")
-            print(f"Sent heartbeat to Auth Primary")
-            time.sleep(5)
+            heartbeatList = []
+            heartbeatList.append(self.host)
+            heartbeatList.append(self.port)
+            heartbeatList.append(self.numOfConnectedClients)
+
+            heartbeat = json.dumps(heartbeatList)
+            print(f"Heartbeat Sent: {heartbeat}")
+            s.sendall(heartbeat.encode())
+            # s.sendall(b"heartbeat")
+            # print(f"Sent heartbeat to Auth Primary")
+            time.sleep(10)
 
     def handle_client_connection(self):
         print(f"IN HANDLE_CLIENT_CONNECTION - Inside thread for handle_client_connection")

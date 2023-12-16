@@ -24,7 +24,10 @@ class AuthPrimary:
         self.authSub_port = None
         self.authSub_list = []
         self.authSub_file = None
+        self.numOfAuthSubs = 0
         print(f"AuthPrimary set up on: {self.host}, Node Port: {self.port}")
+
+        threading.Thread(target=self.accept_client_connection).start()
 
     def find_open_port(self):
         # Iterate through the port range to find the first open port
@@ -48,20 +51,25 @@ class AuthPrimary:
             print(f"Connected to Bootstrap Server and sent info: {client_info}")
 
             # HANDLE THE DATA IT WILL RECEIVE FROM THE BOOTSTRAP SERVER
+            if sock.recv(1024).decode() == "Address and Port":
+                sock.sendall(self.host.encode())
+                print(f"Sent authPrimary ip: {self.host}")
+                sock.sendall(self.port.to_bytes(8, byteorder='big'))
+                print(f"Sent authPrimary port: {self.port}")
 
             # Wait for list from server
             # self.authSub_list.append(sock.recv(1024).decode())
             # print(f"Received list data: {self.authSub_list}")
-            received_list_data = sock.recv(1024).decode()
-            print(f"\nReceived list data: {received_list_data}")
-            auth_sub_info = json.loads(received_list_data)
-            self.authSub_list.append(auth_sub_info)
-            print(f"\nReceived list data: {self.authSub_list}")
+            # received_list_data = sock.recv(1024).decode()
+            # print(f"\nReceived list data: {received_list_data}")
+            # auth_sub_info = json.loads(received_list_data)
+            # self.authSub_list.append(auth_sub_info)
+            # print(f"\nReceived list data: {self.authSub_list}")
 
             self.authSub_file = sock.recv(1024).decode()
             print(f"Received file data: {self.authSub_file}")
 
-            threading.Thread(target=self.accept_client_connection).start()
+            # threading.Thread(target=self.accept_client_connection).start()
 
             # self.do_somthing_else()
 
@@ -90,15 +98,23 @@ class AuthPrimary:
     def handle_authSub_connection(self, sock, addr):
 
         print(f"\nA new authSub has connected from: {addr}")
+        self.numOfAuthSubs += 1
 
-        # Receive the authSub address and port
-        sock.sendall(b"Address and Port")
-        print(f"Asked subAuth for address and port")
+        print("Waiting for second authSub to connect")
+        while True:
+            try:
+                if self.numOfAuthSubs == 2:
+                    # Receive the authSub address and port
+                    sock.sendall(b"Address and Port")
+                    print(f"Asked subAuth for address and port")
 
-        self.authSub_ip = sock.recv(1024).decode()
-        print(f"Received authSub address: {self.authSub_ip}")
-        self.authSub_port = int.from_bytes(sock.recv(8), byteorder='big')
-        print(f"Received authSub port: {self.authSub_port}")
+                    self.authSub_ip = sock.recv(1024).decode()
+                    print(f"Received authSub address: {self.authSub_ip}")
+                    self.authSub_port = int.from_bytes(sock.recv(8), byteorder='big')
+                    print(f"Received authSub port: {self.authSub_port}")
+                    break
+            except:
+                pass
 
         # print(f"\n")
         # print(addr[0])
@@ -113,19 +129,17 @@ class AuthPrimary:
         while True:
             heartbeat_message = sock.recv(1024).decode()
 
-            # heartbeat_sender = self.get_heartbeat_sender(addr)
-            heartbeat_sender = "TEST"
+            json_heartbeat = json.loads(heartbeat_message)
 
-            print(f"Received heartbeat message from {heartbeat_sender}: {heartbeat_message}")
+            # Get the ip and port of the authSub that sent the heartbeat
+            authSub_ip = json_heartbeat[0]
+            authSub_port = json_heartbeat[1]
+            # Get the number of connected clients
+            numOfConnectedClients = json_heartbeat[2]
+
+            print(f"Received heartbeat message: {json_heartbeat}")
+
             time.sleep(5)
-
-    def get_heartbeat_sender(self, addr):
-        for authSub in self.authSub_list:
-            # Check that the ip and port match
-            if int(authSub[1]) == addr[0] and int(authSub[2]) == addr[1]:
-                heartbeat_sender = authSub['name']
-                return heartbeat_sender
-        return None
 
     def handle_client_connection(self, sock):
 
