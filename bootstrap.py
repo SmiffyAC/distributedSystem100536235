@@ -19,6 +19,7 @@ class BootstrapServer:
         self.subAuthNodes = []  # List to store the subAuth nodes
         self.numOfAuthSubs = 0  # Variable to store the number of subAuth nodes
         self.subFdnNodes = []  # List to store the subFdn nodes
+        self.numofFdnSubs = 0  # Variable to store the number of subFdn nodes
         self.nodes = {}  # Dictionary to store registered nodes
         self.client = None
 
@@ -111,6 +112,8 @@ class BootstrapServer:
                 self.handle_sub_auth(node, node_info)
 
             elif node_info['name'] == 'fdnSub':
+                print(f"\nSub Fdn connected with info: {node_info}")
+                print(f"Sub Fdn connected from: {addr}\n")
                 self.handle_sub_fdn(node, node_info)
 
             elif node_info['name'] == 'client':
@@ -149,6 +152,11 @@ class BootstrapServer:
             node.sendall(b"fdnPrimary")
             self.connected_nodes.append(node)  # Store the socket object
             print(f"Node handling fdnPrimary creation: {node_info['ip']}")
+
+        # Tell the fifth and sixth connected node to be FdnSub1 (TEMP)
+        elif len(self.connected_nodes) == 4 or len(self.connected_nodes) == 5:
+            node.sendall(b"subFdn")
+            self.connected_nodes.append(node)
 
         # THE BELOW HAS BEEN COMMMENTED OUT SO I CAN TEST THE ABOVE ###############
 
@@ -217,32 +225,45 @@ class BootstrapServer:
 
         print(f"In handle_fdn_primary")
 
-        # Send JSON data after confirmation
-        self.subFdnNodes.append('subFdn1')
-        self.subFdnNodes.append('subFdn2')
-        fdn_nodes_json = json.dumps(self.subFdnNodes)
-        sock.sendall(fdn_nodes_json.encode('utf-8'))
+        print(f"Waiting for connected nodes to be 6 (waiting for subFdn1 and subFdn2)")
+        while True:
+            try:
+                if self.numofFdnSubs == 2:
 
-        audio_file_paths = ["glossy.mp3", "relaxing.mp3", "risk.mp3"]
+                    # Send audio files to fdnPrimary
+                    audio_file_paths = ["glossy.mp3", "relaxing.mp3", "risk.mp3"]
 
-        number_of_files = len(audio_file_paths)
-        print(f"Number of audio files to send: {number_of_files}")
+                    number_of_files = len(audio_file_paths)
+                    print(f"Number of audio files to send: {number_of_files}")
 
-        # Tell node how many files to expect
-        sock.sendall(number_of_files.to_bytes(8, byteorder='big'))
+                    # Tell node how many files to expect
+                    sock.sendall(number_of_files.to_bytes(8, byteorder='big'))
 
-        file_index = 0
+                    file_index = 0
 
-        while file_index < number_of_files:
-            print(audio_file_paths[file_index])
-            with open(audio_file_paths[file_index], 'rb') as file:
-                mp3_file_content = b''
-                mp3_file_content = file.read()
+                    while file_index < number_of_files:
+                        print(audio_file_paths[file_index])
+                        with open(audio_file_paths[file_index], 'rb') as file:
+                            mp3_file_content = b''
+                            mp3_file_content = file.read()
 
-            sock.sendall(len(mp3_file_content).to_bytes(8, byteorder='big'))
-            print(f"Sent file size: {len(mp3_file_content)}")
-            sock.sendall(mp3_file_content)
-            file_index += 1
+                        sock.sendall(len(mp3_file_content).to_bytes(8, byteorder='big'))
+                        print(f"Sent file size: {len(mp3_file_content)}")
+                        sock.sendall(mp3_file_content)
+                        file_index += 1
+            except:
+                pass
+
+
+        # # Send JSON data after confirmation
+        # self.subFdnNodes.append('subFdn1')
+        # self.subFdnNodes.append('subFdn2')
+        # fdn_nodes_json = json.dumps(self.subFdnNodes)
+        # sock.sendall(fdn_nodes_json.encode('utf-8'))
+
+
+
+
 
     def handle_sub_auth(self, sock, node_info):
         print(f"IN HANDLE SUB AUTH")
@@ -271,7 +292,27 @@ class BootstrapServer:
             print(f"NEW Number of subAuth nodes: {self.numOfAuthSubs}")
 
     def handle_sub_fdn(self, sock, node_info):
-        pass
+        print(f"IN HANDLE SUB FDN")
+
+        print(f"Connected subFdn info: {node_info['ip'], node_info['port']}")
+
+        # Generate a name for the subFdn node based on the number of subFdn nodes
+        fdnsub_name = "fdnSub" + str(len(self.subFdnNodes) + 1)
+
+        self.subFdnNodes.append({"name": fdnsub_name, "ip": node_info['ip'], "port": node_info['port']})
+        print(f"Sub Fdn Nodes List: {self.subFdnNodes}")
+
+        sock.sendall(b"Ready to provide fdnPrimary address")
+
+        message = sock.recv(1024).decode()
+        print(f"Received message: {message}")
+
+        if message == 'fdnPrimary address':
+            # print(f"Received message: {message}")
+            sock.sendall(self.fdn_primary_node_ip.encode('utf-8'))
+            print(f"Sent fdnPrimary address: {self.fdn_primary_node_ip}")
+            sock.sendall(self.fdn_primary_node_port.to_bytes(8, byteorder='big'))
+            print(f"Sent fdnPrimary port: {self.fdn_primary_node_port}")
 
     def handle_client(self, sock, node_info):
         sock.sendall(b"Welcome client")

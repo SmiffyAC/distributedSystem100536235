@@ -111,40 +111,7 @@ class AuthPrimary:
         print(f"Number of authSubs: {self.numOfAuthSubs}")
 
         print("Waiting for second authSub to connect")
-        # while True:
-        #     try:
-        #         if self.numOfAuthSubs == 1:
-        #             # Receive the authSub address and port
-        #             sock.sendall(b"Address and Port")
-        #             print(f"Asked subAuth for address and port")
-        #
-        #             self.authSub1_ip = sock.recv(1024).decode()
-        #             print(f"Received authSub1 address: {self.authSub1_ip}")
-        #             self.authSub1_port = int.from_bytes(sock.recv(8), byteorder='big')
-        #             print(f"Received authSub1 port: {self.authSub1_port}")
-        #             break
-        #         elif self.numOfAuthSubs == 2:
-        #             # Receive the authSub address and port
-        #             sock.sendall(b"Address and Port")
-        #             print(f"Asked subAuth for address and port")
-        #
-        #             self.authSub2_ip = sock.recv(1024).decode()
-        #             print(f"Received authSub2 address: {self.authSub2_ip}")
-        #             self.authSub2_port = int.from_bytes(sock.recv(8), byteorder='big')
-        #             print(f"Received authSub2 port: {self.authSub2_port}")
-        #             break
-        #     except:
-        #         pass
-        #
-        # while True:
-        #     try:
-        #         if self.authSub1_ip is not None and self.authSub2_ip is not None:
-        #             break
-        #     except:
-        #         pass
-        # # Tell subAuths to start sending heartbeats
-        # self.handle_authSub_hearbeat(sock, addr)
-        # sock.sendall(b"Start heartbeat")
+
         while True:
             try:
                 if self.numOfAuthSubs == 2:
@@ -160,15 +127,9 @@ class AuthPrimary:
             except:
                 pass
 
-            # print(f"\n")
-            # print(addr[0])
-            # print(addr[1])
-            # print(self.authSub_list[0][0])  # ip
-            # print(self.authSub_list[0][1])  # port
-
         # Tell subAuths to start sending heartbeats
         sock.sendall(b"Start heartbeat")
-        self.handle_authSub_hearbeat(sock, addr)
+        self.handle_authSub_heartbeat(sock, addr)
 
 
         # print(f"\n")
@@ -178,9 +139,9 @@ class AuthPrimary:
         # print(self.authSub_list[0][1])  # port
 
 
-        # threading.Thread(target=self.handle_authSub_hearbeat, args=(sock,)).start()
+        # threading.Thread(target=self.handle_authSub_heartbeat, args=(sock,)).start()
 
-    def handle_authSub_hearbeat(self, sock, addr):
+    def handle_authSub_heartbeat(self, sock, addr):
         while True:
             heartbeat_message = sock.recv(1024).decode()
 

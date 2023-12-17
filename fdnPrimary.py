@@ -34,7 +34,7 @@ class FdnPrimary:
         self.fdnSub_list = []
         self.fdnSub_file = []
         self.numOfFdnSubs = 0
-        print(f"AuthPrimary set up on: {self.host}, Node Port: {self.port}")
+        print(f"FdnPrimary set up on: {self.host}, Node Port: {self.port}")
 
         threading.Thread(target=self.accept_client_connection).start()
 
@@ -98,8 +98,6 @@ class FdnPrimary:
 
             # threading.Thread(target=self.accept_client_connection).start()
 
-
-
     def accept_client_connection(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             sock.bind((self.host, self.port))
@@ -112,12 +110,11 @@ class FdnPrimary:
 
                 connection_message = node.recv(1024).decode()
 
-                if connection_message == 'authSub':
+                if connection_message == 'fdnSub':
                     threading.Thread(target=self.handle_fdnSub_connection, args=(node, addr)).start()
 
                 elif connection_message == 'client':
                     threading.Thread(target=self.handle_client_connection, args=(node,)).start()
-
 
     def handle_fdnSub_connection(self, sock, addr):
 
@@ -130,30 +127,29 @@ class FdnPrimary:
         while True:
             try:
                 if self.numOfFdnSubs == 2:
-                    # Receive the authSub address and port
+                    # Receive the fdnSub address and port
                     sock.sendall(b"Address and Port")
-                    print(f"Asked subAuth for address and port")
+                    print(f"Asked subFdn for address and port")
 
                     self.fdnSub_ip = sock.recv(1024).decode()
-                    print(f"Received authSub address: {self.fdnSub_ip}")
+                    print(f"Received fdnSub address: {self.fdnSub_ip}")
                     self.fdnSub_port = int.from_bytes(sock.recv(8), byteorder='big')
-                    print(f"Received authSub port: {self.fdnSub_port}")
+                    print(f"Received fdnSub port: {self.fdnSub_port}")
                     break
             except:
                 pass
 
-        # Tell subAuths to start sending heartbeats
+        # Tell subFdns to start sending heartbeats
         sock.sendall(b"Start heartbeat")
-        self.handle_fdnSub_hearbeat(sock, addr)
+        self.handle_fdnSub_heartbeat(sock, addr)
 
-
-    def handle_fdnSub_hearbeat(self, sock, addr):
+    def handle_fdnSub_heartbeat(self, sock, addr):
         while True:
             heartbeat_message = sock.recv(1024).decode()
 
             json_heartbeat = json.loads(heartbeat_message)
 
-            # Get the ip and port of the authSub that sent the heartbeat
+            # Get the ip and port of the fdnSub that sent the heartbeat
             hb_fdnsub_ip = json_heartbeat[0]
             hb_fdnsub_port = json_heartbeat[1]
             # Get the number of connected clients
@@ -184,17 +180,16 @@ class FdnPrimary:
         print(f"Received message from client: {client_message}")
 
         if client_message == "Need fdnSub address":
-
             fdnsub_ip_to_send = self.subFdnWithLowestNumOfClients_ip
-            print(f"authSub_ip_to_send: {fdnsub_ip_to_send}")
+            print(f"fdnSub_ip_to_send: {fdnsub_ip_to_send}")
             fdnsub_port_to_send = self.subFdnWithLowestNumOfClients_port
-            print(f"authSub_port_to_send: {fdnsub_port_to_send}")
+            print(f"fdnSub_port_to_send: {fdnsub_port_to_send}")
 
-            # Send the ip and port to the authSub
+            # Send the ip and port to the fdnSub
             sock.sendall(fdnsub_ip_to_send.encode())
-            print(f"Sent authSub ip: {fdnsub_ip_to_send}")
+            print(f"Sent fdnSub ip: {fdnsub_ip_to_send}")
             sock.sendall(fdnsub_port_to_send.to_bytes(8, byteorder='big'))
-            print(f"Sent authSub port: {fdnsub_port_to_send}")
+            print(f"Sent fdnSub port: {fdnsub_port_to_send}")
 
 
 if __name__ == '__main__':
