@@ -51,15 +51,15 @@ class AuthSub:
             print(f"Connected to Bootstrap Server and sent info: {client_info}")
 
             # HANDLE THE DATA IT WILL RECEIVE PRIMARY AUTH ADDRESS FROM THE BOOTSTRAP SERVER
+            if sock.recv(1024).decode() == "Ready to provide authPrimary address":
 
-            sock.sendall(b"authPrimary address")
+                sock.sendall(b"authPrimary address")
+                # Wait for auth address from server
+                auth_primary_ip = sock.recv(1024).decode()
+                print(f"Received authPrimary address: {auth_primary_ip}")
 
-            # Wait for auth address from server
-            auth_primary_ip = sock.recv(1024).decode()
-            print(f"Received authPrimary address: {auth_primary_ip}")
-
-            auth_primary_port = int.from_bytes(sock.recv(8), byteorder='big')
-            print(f"Received authPrimary port: {auth_primary_port}")
+                auth_primary_port = int.from_bytes(sock.recv(8), byteorder='big')
+                print(f"Received authPrimary port: {auth_primary_port}")
 
             # threading.Thread(target=self.connect_to_authPrimary).start()
             # self.connect_to_authPrimary(auth_primary_ip, auth_primary_port)
@@ -116,19 +116,20 @@ class AuthSub:
             sock.listen()
             print(f"authSub now listening for clients on {self.host}:{self.port}")
 
-            node, addr = sock.accept()
-            print(f"Accepted connection from client with info: {addr}")
+            while True:
+                node, addr = sock.accept()
+                print(f"Accepted connection from client with info: {addr}")
 
-            client_message = node.recv(1024).decode()
-            print(f"Received message from client: {client_message}")
+                client_message = node.recv(1024).decode()
+                print(f"Received message from client: {client_message}")
 
-            if client_message == 'token':
-                time_stamp = str(time.time())
-                token = str(addr) + time_stamp
-                print(f"Token: {token}")
-                node.sendall(token.encode())
-                print(f"Sent token: {token}")
-                input("Press Enter to exit... - AFTER SENDING TOKEN")
+                if client_message == 'token':
+                    time_stamp = str(time.time())
+                    token = str(self.host) + str(self.port) + time_stamp
+                    print(f"Token: {token}")
+                    node.sendall(token.encode())
+                    print(f"Sent token: {token}")
+                    input("Press Enter to exit... - AFTER SENDING TOKEN")
 
 
 if __name__ == '__main__':

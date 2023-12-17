@@ -202,8 +202,6 @@ class BootstrapServer:
         # if len(self.connected_nodes) == 2:
         #     self.subAuthNodes.append(self.connected_nodes[2])
 
-
-
     def handle_fdn_primary(self, sock, node_info):
 
         print(f"In handle_fdn_primary")
@@ -261,7 +259,7 @@ class BootstrapServer:
         self.subAuthNodes.append({"name": authsub_name, "ip": node_info['ip'], "port": node_info['port']})
         print(f"Sub Auth Nodes List: {self.subAuthNodes}")
 
-
+        sock.sendall(b"Ready to provide authPrimary address")
 
         message = sock.recv(1024).decode()
         print(f"Received message: {message}")
