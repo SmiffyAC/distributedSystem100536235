@@ -305,11 +305,15 @@ class BootstrapServer:
         # Send audio files to fdnPrimary#########################################################
         audio_file_paths = ["glossy.mp3", "relaxing.mp3", "risk.mp3"]
 
+        # Send the number of files to expect
         number_of_files = len(audio_file_paths)
         print(f"Number of audio files to send: {number_of_files}")
-
         # Tell node how many files to expect
         sock.sendall(number_of_files.to_bytes(8, byteorder='big'))
+
+        # Send the list of audio files to chose from
+        audio_file_list = json.dumps(audio_file_paths)
+        sock.sendall(audio_file_list.encode())
 
         file_index = 0
 

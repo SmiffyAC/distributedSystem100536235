@@ -22,6 +22,11 @@ class FdnSub:
         self.port = self.find_open_port()
         self.tokenSet = {}
         self.numOfConnectedClients = 0
+
+        self.number_of_files = None
+        self.json_audio_file_list = None
+
+
         print(f"FdnSub set up on: {self.host}, Node Port: {self.port}")
 
         # COMMENTED OUT FOR TESTING
@@ -50,15 +55,20 @@ class FdnSub:
             sock.sendall(json.dumps(client_info).encode('utf-8'))
             print(f"Connected to Bootstrap Server and sent info: {client_info}")
 
-            number_of_files = int.from_bytes(sock.recv(8), byteorder='big')
-            print(f"Expected number of audio files: {number_of_files}")
+            self.number_of_files = int.from_bytes(sock.recv(8), byteorder='big')
+            print(f"Expected number of audio files: {self.number_of_files}")
+
+            audio_file_list = sock.recv(1024).decode()
+            print(f"Received audio file list: {audio_file_list}")
+            self.json_audio_file_list = json.loads(audio_file_list)
+            print(f"JSON audio file list: {self.json_audio_file_list}")
 
             file = 0
 
             audio_file_size_list = []
             audio_file_data_list = []
 
-            while file < number_of_files:
+            while file < self.number_of_files:
                 audio_file_size_data = sock.recv(8)
                 audio_file_size = int.from_bytes(audio_file_size_data, byteorder='big')
                 print(f"Audio File size: {audio_file_size}")
@@ -152,7 +162,7 @@ class FdnSub:
                 client_message = node.recv(1024).decode()
                 print(f"Received message from client: {client_message}")
 
-                if client_message == 'token':
+                if client_message == 'audio file':
                     time_stamp = str(time.time())
                     token = str(self.host) + "|" + str(self.port) + "|" + time_stamp
                     print(f"Token: {token}")
