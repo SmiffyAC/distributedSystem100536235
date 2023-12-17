@@ -86,16 +86,18 @@ class AuthSub:
                 s.sendall(self.port.to_bytes(8, byteorder='big'))
                 print(f"Sent AuthSub port: {self.port}")
 
+            authPrimary_message_2 = s.recv(1024).decode()
+
+            if authPrimary_message_2 == "Start heartbeat":
                 self.send_heartbeat_to_authPrimary(s)
 
                 # threading.Thread(target=self.send_heartbeat_to_authPrimary, args=(s,)).start()
-
-                input("Press Enter to exit... - AFTER SENDING ADDRESS AND PORT")
                 # self.handle_client_connection()
                 # threading.Thread(target=self.handle_client_connection).start()
 
     def send_heartbeat_to_authPrimary(self, s):
         print(f"IN SEND_HEARTBEAT_TO_AUTHPRIMARY - Sending heartbeat to Auth Primary")
+        time.sleep(5)
         while True:
             heartbeatList = []
             heartbeatList.append(self.host)
@@ -125,11 +127,11 @@ class AuthSub:
 
                 if client_message == 'token':
                     time_stamp = str(time.time())
-                    token = str(self.host) + str(self.port) + time_stamp
+                    token = str(self.host) + "|" + str(self.port) + "|" + time_stamp
                     print(f"Token: {token}")
                     node.sendall(token.encode())
                     print(f"Sent token: {token}")
-                    input("Press Enter to exit... - AFTER SENDING TOKEN")
+                    # input("Press Enter to exit... - AFTER SENDING TOKEN")
 
 
 if __name__ == '__main__':

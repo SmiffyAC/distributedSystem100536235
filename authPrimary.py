@@ -20,8 +20,17 @@ class AuthPrimary:
         self.name = name
         self.host = ip_address_10
         self.port = self.find_open_port()
-        self.authSub_ip = None
-        self.authSub_port = None
+        self.authSub1_ip = None
+        self.authSub1_port = None
+        self.authSub1_numOfConnectedClients = 0
+        self.authSub2_ip = None
+        self.authSub2_port = None
+        self.authSub2_numOfConnectedClients = 0
+
+        self.subAuthWithLowestNumOfClients_ip = None
+        self.subAuthWithLowestNumOfClients_port = None
+        self.subAuthWithLowestNumOfClients_numOfConnectedClients = 0
+
         self.authSub_list = []
         self.authSub_file = None
         self.numOfAuthSubs = 0
@@ -99,8 +108,43 @@ class AuthPrimary:
 
         print(f"\nA new authSub has connected from: {addr}")
         self.numOfAuthSubs += 1
+        print(f"Number of authSubs: {self.numOfAuthSubs}")
 
         print("Waiting for second authSub to connect")
+        # while True:
+        #     try:
+        #         if self.numOfAuthSubs == 1:
+        #             # Receive the authSub address and port
+        #             sock.sendall(b"Address and Port")
+        #             print(f"Asked subAuth for address and port")
+        #
+        #             self.authSub1_ip = sock.recv(1024).decode()
+        #             print(f"Received authSub1 address: {self.authSub1_ip}")
+        #             self.authSub1_port = int.from_bytes(sock.recv(8), byteorder='big')
+        #             print(f"Received authSub1 port: {self.authSub1_port}")
+        #             break
+        #         elif self.numOfAuthSubs == 2:
+        #             # Receive the authSub address and port
+        #             sock.sendall(b"Address and Port")
+        #             print(f"Asked subAuth for address and port")
+        #
+        #             self.authSub2_ip = sock.recv(1024).decode()
+        #             print(f"Received authSub2 address: {self.authSub2_ip}")
+        #             self.authSub2_port = int.from_bytes(sock.recv(8), byteorder='big')
+        #             print(f"Received authSub2 port: {self.authSub2_port}")
+        #             break
+        #     except:
+        #         pass
+        #
+        # while True:
+        #     try:
+        #         if self.authSub1_ip is not None and self.authSub2_ip is not None:
+        #             break
+        #     except:
+        #         pass
+        # # Tell subAuths to start sending heartbeats
+        # self.handle_authSub_hearbeat(sock, addr)
+        # sock.sendall(b"Start heartbeat")
         while True:
             try:
                 if self.numOfAuthSubs == 2:
@@ -116,13 +160,24 @@ class AuthPrimary:
             except:
                 pass
 
+            # print(f"\n")
+            # print(addr[0])
+            # print(addr[1])
+            # print(self.authSub_list[0][0])  # ip
+            # print(self.authSub_list[0][1])  # port
+
+        # Tell subAuths to start sending heartbeats
+        sock.sendall(b"Start heartbeat")
+        self.handle_authSub_hearbeat(sock, addr)
+
+
         # print(f"\n")
         # print(addr[0])
         # print(addr[1])
         # print(self.authSub_list[0][0])  # ip
         # print(self.authSub_list[0][1])  # port
 
-        self.handle_authSub_hearbeat(sock, addr)
+
         # threading.Thread(target=self.handle_authSub_hearbeat, args=(sock,)).start()
 
     def handle_authSub_hearbeat(self, sock, addr):
@@ -132,13 +187,34 @@ class AuthPrimary:
             json_heartbeat = json.loads(heartbeat_message)
 
             # Get the ip and port of the authSub that sent the heartbeat
-            authSub_ip = json_heartbeat[0]
-            authSub_port = json_heartbeat[1]
+            hb_authsub_ip = json_heartbeat[0]
+            hb_authsub_port = json_heartbeat[1]
             # Get the number of connected clients
-            numOfConnectedClients = json_heartbeat[2]
+            hb_numofconnectedclients = json_heartbeat[2]
 
-            print(f"Received heartbeat message: {json_heartbeat}")
+            print(f"Received heartbeat message from {hb_authsub_ip}, {hb_authsub_port}: {json_heartbeat}")
 
+            if self.subAuthWithLowestNumOfClients_ip is None:
+                self.subAuthWithLowestNumOfClients_ip = hb_authsub_ip
+                self.subAuthWithLowestNumOfClients_port = hb_authsub_port
+                self.subAuthWithLowestNumOfClients_numOfConnectedClients = hb_numofconnectedclients
+                print(f"New subAuth with lowest number of clients: {self.subAuthWithLowestNumOfClients_ip}, {self.subAuthWithLowestNumOfClients_port}, {self.subAuthWithLowestNumOfClients_numOfConnectedClients}")
+
+            elif hb_numofconnectedclients < self.subAuthWithLowestNumOfClients_numOfConnectedClients:
+                self.subAuthWithLowestNumOfClients_ip = hb_authsub_ip
+                self.subAuthWithLowestNumOfClients_port = hb_authsub_port
+                self.subAuthWithLowestNumOfClients_numOfConnectedClients = hb_numofconnectedclients
+                print(f"New subAuth with lowest number of clients: {self.subAuthWithLowestNumOfClients_ip}, {self.subAuthWithLowestNumOfClients_port}, {self.subAuthWithLowestNumOfClients_numOfConnectedClients}")
+
+            else:
+                print("No new subAuth with lowest number of clients")
+
+
+            # if hb_authsub_ip == self.authSub1_ip and hb_authsub_port == self.authSub1_port:
+            #     self.authSub1_numOfConnectedClients = hb_numofconnectedclients
+            #
+            # elif hb_authsub_ip == self.authSub2_ip and hb_authsub_port == self.authSub2_port:
+            #     self.authSub2_numOfConnectedClients = hb_numofconnectedclients
             time.sleep(5)
 
     def handle_client_connection(self, sock):
@@ -149,11 +225,25 @@ class AuthPrimary:
         if client_message == 'Need authSub address':
             # LATER THE BELOW WILL BE PUT INTO A LOAD BALANCER
 
+            authsub_ip_to_send = self.subAuthWithLowestNumOfClients_ip
+            print(f"authSub_ip_to_send: {authsub_ip_to_send}")
+            authsub_port_to_send = self.subAuthWithLowestNumOfClients_port
+            print(f"authSub_port_to_send: {authsub_port_to_send}")
+            #
+            # if self.authSub1_numOfConnectedClients <= self.authSub2_numOfConnectedClients:
+            #     print(f"authSub1 has less clients than authSub2")
+            #     authsub_ip_to_send = self.authSub1_ip
+            #     authsub_port_to_send = self.authSub1_port
+            # elif self.authSub1_numOfConnectedClients > self.authSub2_numOfConnectedClients:
+            #     print(f"authSub2 has less clients than authSub1")
+            #     authsub_ip_to_send = self.authSub2_ip
+            #     authsub_port_to_send = self.authSub2_port
+
             # Send the ip and port to the authSub
-            sock.sendall(self.authSub_ip.encode())
-            print(f"Sent authSub ip: {self.authSub_ip}")
-            sock.sendall(self.authSub_port.to_bytes(8, byteorder='big'))
-            print(f"Sent authSub port: {self.authSub_port}")
+            sock.sendall(authsub_ip_to_send.encode())
+            print(f"Sent authSub ip: {authsub_ip_to_send}")
+            sock.sendall(authsub_port_to_send.to_bytes(8, byteorder='big'))
+            print(f"Sent authSub port: {authsub_port_to_send}")
 
 
 if __name__ == '__main__':
