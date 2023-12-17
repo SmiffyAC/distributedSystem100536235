@@ -6,6 +6,7 @@ import threading
 
 import os
 import sys
+import time
 
 
 class FdnPrimary:
@@ -19,7 +20,23 @@ class FdnPrimary:
         self.name = name
         self.host = ip_address_10
         self.port = self.find_open_port()
+        self.fdnSub1_ip = None
+        self.fdnSub1_port = None
+        self.fdnSub1_numOfConnectedClients = 0
+        self.fdnSub2_ip = None
+        self.fdnSub2_port = None
+        self.fdnSub2_numOfConnectedClients = 0
+
+        self.subFdnWithLowestNumOfClients_ip = None
+        self.subFdnWithLowestNumOfClients_port = None
+        self.subFdnWithLowestNumOfClients_numOfConnectedClients = 0
+
+        self.fdnSub_list = []
+        self.fdnSub_file = []
+        self.numOfFdnSubs = 0
         print(f"AuthPrimary set up on: {self.host}, Node Port: {self.port}")
+
+        threading.Thread(target=self.accept_client_connection).start()
 
     def find_open_port(self):
         # Iterate through the port range to find the first open port
@@ -41,6 +58,13 @@ class FdnPrimary:
             # Send the client information to the Bootstrap Server
             sock.sendall(json.dumps(client_info).encode('utf-8'))
             print(f"Connected to Bootstrap Server and sent info: {client_info}")
+
+            # HANDLE THE DATA IT WILL RECEIVE FROM THE BOOTSTRAP SERVER
+            if sock.recv(1024).decode() == "Address and Port":
+                sock.sendall(self.host.encode())
+                print(f"Sent fdnPrimary ip: {self.host}")
+                sock.sendall(self.port.to_bytes(8, byteorder='big'))
+                print(f"Sent fdnPrimary port: {self.port}")
 
             client_list_data = sock.recv(1024).decode()
             print(f"Received list data: {client_list_data}")
@@ -72,7 +96,7 @@ class FdnPrimary:
                 print(f"File {file} received")
                 file += 1
 
-            threading.Thread(target=self.accept_client_connection).start()
+            # threading.Thread(target=self.accept_client_connection).start()
 
 
 
@@ -84,14 +108,93 @@ class FdnPrimary:
 
             while True:
                 node, addr = sock.accept()
-                print(f"Accepted connection from {addr}")
-                threading.Thread(target=self.handle_client_connection, args=(node,)).start()
+                print(f"\nAccepted connection from {addr}")
+
+                connection_message = node.recv(1024).decode()
+
+                if connection_message == 'authSub':
+                    threading.Thread(target=self.handle_fdnSub_connection, args=(node, addr)).start()
+
+                elif connection_message == 'client':
+                    threading.Thread(target=self.handle_client_connection, args=(node,)).start()
+
+
+    def handle_fdnSub_connection(self, sock, addr):
+
+        print(f"\nA new fdnSub has connected from: {addr}")
+        self.numOfFdnSubs += 1
+        print(f"Number of fdnSubs: {self.numOfFdnSubs}")
+
+        print("Waiting for second fdnSub to connect")
+
+        while True:
+            try:
+                if self.numOfFdnSubs == 2:
+                    # Receive the authSub address and port
+                    sock.sendall(b"Address and Port")
+                    print(f"Asked subAuth for address and port")
+
+                    self.fdnSub_ip = sock.recv(1024).decode()
+                    print(f"Received authSub address: {self.fdnSub_ip}")
+                    self.fdnSub_port = int.from_bytes(sock.recv(8), byteorder='big')
+                    print(f"Received authSub port: {self.fdnSub_port}")
+                    break
+            except:
+                pass
+
+        # Tell subAuths to start sending heartbeats
+        sock.sendall(b"Start heartbeat")
+        self.handle_fdnSub_hearbeat(sock, addr)
+
+
+    def handle_fdnSub_hearbeat(self, sock, addr):
+        while True:
+            heartbeat_message = sock.recv(1024).decode()
+
+            json_heartbeat = json.loads(heartbeat_message)
+
+            # Get the ip and port of the authSub that sent the heartbeat
+            hb_fdnsub_ip = json_heartbeat[0]
+            hb_fdnsub_port = json_heartbeat[1]
+            # Get the number of connected clients
+            hb_numofconnectedclients = json_heartbeat[2]
+
+            print(f"Received heartbeat message from {hb_fdnsub_ip}, {hb_fdnsub_port}: {json_heartbeat}")
+
+            if self.subFdnWithLowestNumOfClients_ip is None:
+                self.subFdnWithLowestNumOfClients_ip = hb_fdnsub_ip
+                self.subFdnWithLowestNumOfClients_port = hb_fdnsub_port
+                self.subFdnWithLowestNumOfClients_numOfConnectedClients = hb_numofconnectedclients
+                print(f"New subFdn with lowest number of clients: {self.subFdnWithLowestNumOfClients_ip}, {self.subFdnWithLowestNumOfClients_port}, {self.subFdnWithLowestNumOfClients_numOfConnectedClients}")
+
+            elif hb_numofconnectedclients < self.subFdnWithLowestNumOfClients_numOfConnectedClients:
+                self.subFdnWithLowestNumOfClients_ip = hb_fdnsub_ip
+                self.subFdnWithLowestNumOfClients_port = hb_fdnsub_port
+                self.subFdnWithLowestNumOfClients_numOfConnectedClients = hb_numofconnectedclients
+                print(f"New subFdn with lowest number of clients: {self.subFdnWithLowestNumOfClients_ip}, {self.subFdnWithLowestNumOfClients_port}, {self.subFdnWithLowestNumOfClients_numOfConnectedClients}")
+
+            else:
+                print("No new subFdn with lowest number of clients")
+
+            time.sleep(5)
 
     def handle_client_connection(self, sock):
-        message = sock.recv(1024).decode()
-        print(f"Received message: {message}")
-        if message == 'token':
-            sock.sendall(b"WILL ADD SUB AUTH IP LATER")
+
+        client_message = sock.recv(1024).decode()
+        print(f"Received message from client: {client_message}")
+
+        if client_message == "Need fdnSub address":
+
+            fdnsub_ip_to_send = self.subFdnWithLowestNumOfClients_ip
+            print(f"authSub_ip_to_send: {fdnsub_ip_to_send}")
+            fdnsub_port_to_send = self.subFdnWithLowestNumOfClients_port
+            print(f"authSub_port_to_send: {fdnsub_port_to_send}")
+
+            # Send the ip and port to the authSub
+            sock.sendall(fdnsub_ip_to_send.encode())
+            print(f"Sent authSub ip: {fdnsub_ip_to_send}")
+            sock.sendall(fdnsub_port_to_send.to_bytes(8, byteorder='big'))
+            print(f"Sent authSub port: {fdnsub_port_to_send}")
 
 
 if __name__ == '__main__':
