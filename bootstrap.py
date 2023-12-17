@@ -302,17 +302,43 @@ class BootstrapServer:
         self.subFdnNodes.append({"name": fdnsub_name, "ip": node_info['ip'], "port": node_info['port']})
         print(f"Sub Fdn Nodes List: {self.subFdnNodes}")
 
-        sock.sendall(b"Ready to provide fdnPrimary address")
+        # Send audio files to fdnPrimary#########################################################
+        audio_file_paths = ["glossy.mp3", "relaxing.mp3", "risk.mp3"]
 
-        message = sock.recv(1024).decode()
-        print(f"Received message: {message}")
+        number_of_files = len(audio_file_paths)
+        print(f"Number of audio files to send: {number_of_files}")
 
-        if message == 'fdnPrimary address':
-            # print(f"Received message: {message}")
-            sock.sendall(self.fdn_primary_node_ip.encode('utf-8'))
-            print(f"Sent fdnPrimary address: {self.fdn_primary_node_ip}")
-            sock.sendall(self.fdn_primary_node_port.to_bytes(8, byteorder='big'))
-            print(f"Sent fdnPrimary port: {self.fdn_primary_node_port}")
+        # Tell node how many files to expect
+        sock.sendall(number_of_files.to_bytes(8, byteorder='big'))
+
+        file_index = 0
+
+        while file_index < number_of_files:
+            print(audio_file_paths[file_index])
+            with open(audio_file_paths[file_index], 'rb') as file:
+                mp3_file_content = b''
+                mp3_file_content = file.read()
+
+            sock.sendall(len(mp3_file_content).to_bytes(8, byteorder='big'))
+            print(f"Sent file size: {len(mp3_file_content)}")
+            sock.sendall(mp3_file_content)
+            file_index += 1
+        ########################################################################################
+
+        subfdn_message = sock.recv(1024).decode()
+
+        if subfdn_message == "All files Received":
+            sock.sendall(b"Ready to provide fdnPrimary address")
+
+            message = sock.recv(1024).decode()
+            print(f"Received message: {message}")
+
+            if message == 'fdnPrimary address':
+                # print(f"Received message: {message}")
+                sock.sendall(self.fdn_primary_node_ip.encode('utf-8'))
+                print(f"Sent fdnPrimary address: {self.fdn_primary_node_ip}")
+                sock.sendall(self.fdn_primary_node_port.to_bytes(8, byteorder='big'))
+                print(f"Sent fdnPrimary port: {self.fdn_primary_node_port}")
 
     def handle_client(self, sock, node_info):
         sock.sendall(b"Welcome client")

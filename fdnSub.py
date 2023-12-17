@@ -50,6 +50,35 @@ class FdnSub:
             sock.sendall(json.dumps(client_info).encode('utf-8'))
             print(f"Connected to Bootstrap Server and sent info: {client_info}")
 
+            number_of_files = int.from_bytes(sock.recv(8), byteorder='big')
+            print(f"Expected number of audio files: {number_of_files}")
+
+            file = 0
+
+            audio_file_size_list = []
+            audio_file_data_list = []
+
+            while file < number_of_files:
+                audio_file_size_data = sock.recv(8)
+                audio_file_size = int.from_bytes(audio_file_size_data, byteorder='big')
+                print(f"Audio File size: {audio_file_size}")
+
+                mp3_data = b''
+                mp3_data_encoded = ''
+                while len(mp3_data) < audio_file_size:
+                    chunk = sock.recv(min(4096, audio_file_size - len(mp3_data)))
+                    if not chunk:
+                        break
+                    mp3_data += chunk
+
+                audio_file_size_list.append(audio_file_size)
+                print(audio_file_size_list)
+                audio_file_data_list.append(mp3_data)
+                print(f"File {file} received")
+                file += 1
+
+            sock.sendall(b"All files Received")
+
             # HANDLE THE DATA IT WILL RECEIVE PRIMARY FDN ADDRESS FROM THE BOOTSTRAP SERVER
             if sock.recv(1024).decode() == "Ready to provide fdnPrimary address":
                 sock.sendall(b"fdnPrimary address")

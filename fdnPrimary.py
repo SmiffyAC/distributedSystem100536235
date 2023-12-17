@@ -66,9 +66,6 @@ class FdnPrimary:
                 sock.sendall(self.port.to_bytes(8, byteorder='big'))
                 print(f"Sent fdnPrimary port: {self.port}")
 
-            client_list_data = sock.recv(1024).decode()
-            print(f"Received list data: {client_list_data}")
-
             number_of_files = int.from_bytes(sock.recv(8), byteorder='big')
             print(f"Expected number of audio files: {number_of_files}")
 
