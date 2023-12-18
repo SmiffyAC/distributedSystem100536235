@@ -27,6 +27,9 @@ class FdnSub:
         self.audio_file_list = []
         self.json_audio_file_list = []
 
+        self.audio_file_size_list = []
+        self.audio_file_data_list = []
+
         print(f"FdnSub set up on: {self.host}, Node Port: {self.port}")
 
         # COMMENTED OUT FOR TESTING
@@ -83,9 +86,9 @@ class FdnSub:
                         break
                     mp3_data += chunk
 
-                audio_file_size_list.append(audio_file_size)
-                print(audio_file_size_list)
-                audio_file_data_list.append(mp3_data)
+                self.audio_file_size_list.append(audio_file_size)
+                print(self.audio_file_size_list)
+                self.audio_file_data_list.append(mp3_data)
                 print(f"File {file} received")
                 file += 1
 
@@ -171,17 +174,6 @@ class FdnSub:
                     print(f"Received message from client: {client_message}")
 
                     if client_message == 'song list':
-                        # print(f"SELF.AUDIO_FILE_LIST    : {self.audio_file_list}")
-                        # test = json.dumps(self.audio_file_list)
-                        # print(f"TEST = : {test}")
-                        # # test1 = self.json_audio_file_list
-                        # # print(f"TEST1 = : {test1}")
-                        # # test3 = self.audio_file_list
-                        # # print(f"TEST3 = : {test3}")
-                        # test4 = test.encode()
-                        # print(f"TEST4 = : {test4}")
-
-                        # audio_file_paths = ["glossy.mp3", "relaxing.mp3", "risk.mp3"]
                         audio_file_paths = self.audio_file_list
                         print(f"Audio file paths: {audio_file_paths}")
                         audio_file_list = json.dumps(audio_file_paths)
@@ -189,9 +181,15 @@ class FdnSub:
                         node.sendall(audio_file_list.encode())
                         print(f"Sent song list to client: {audio_file_list}")
 
-                        # sock.sendall(test4)
-                        # print(f"Sent song list to client: {test}")
-                        # input("Press Enter to exit... - AFTER SENDING TOKEN")
+                        song_index = int.from_bytes(node.recv(8), byteorder='big')
+                        print(f"Song index: {song_index}")
+
+                        node.sendall(self.audio_file_size_list[song_index].to_bytes(8, byteorder='big'))
+                        print(f"Sent song size: {self.audio_file_size_list[song_index]}")
+                        node.sendall(self.audio_file_data_list[song_index])
+                        print(f"Sent song data")
+
+
                 else:
                     node.close()
 
