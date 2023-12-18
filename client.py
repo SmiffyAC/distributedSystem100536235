@@ -93,14 +93,20 @@ class Client:
             s.connect((authSub_ip, authSub_port))
 
             while True:
-                s.sendall(b"token")
+                s.sendall(b"client")
 
-                self.token = s.recv(1024).decode()
+                authsub_message = s.recv(1024).decode()
 
-                print(f"Received token: {self.token}")
+                if authsub_message == "Ready to provide token":
 
-                if self.token is not None:
-                    break
+                    s.sendall(b"token")
+
+                    self.token = s.recv(1024).decode()
+
+                    print(f"Received token: {self.token}")
+
+                    if self.token is not None:
+                        break
 
             self.connect_to_bootstrap(bootstrap_ip, bootstrap_port)
 
@@ -146,6 +152,13 @@ class Client:
             while True:
 
                 s.sendall(b"client")
+
+                # FDNSUB will check token and send back a message
+                token_request = s.recv(1024).decode()
+
+                if token_request == "Please provide token":
+                    s.sendall(self.token.encode())
+                    print(f"Sent token: {self.token}")
 
                 fdnSub_message = s.recv(1024).decode()
 

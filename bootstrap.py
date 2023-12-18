@@ -2,10 +2,9 @@ import socket
 import threading
 import json
 import subprocess
+import hashlib
+import time
 
-
-# import psutil
-# import netifaces as ni
 
 class BootstrapServer:
     def __init__(self, port=50000):
@@ -226,44 +225,33 @@ class BootstrapServer:
         print(f"In handle_fdn_primary")
 
         print(f"Waiting for connected nodes to be 6 (waiting for subFdn1 and subFdn2)")
-        while True:
-            try:
-                if self.numofFdnSubs == 2:
-
-                    # Send audio files to fdnPrimary
-                    audio_file_paths = ["glossy.mp3", "relaxing.mp3", "risk.mp3"]
-
-                    number_of_files = len(audio_file_paths)
-                    print(f"Number of audio files to send: {number_of_files}")
-
-                    # Tell node how many files to expect
-                    sock.sendall(number_of_files.to_bytes(8, byteorder='big'))
-
-                    file_index = 0
-
-                    while file_index < number_of_files:
-                        print(audio_file_paths[file_index])
-                        with open(audio_file_paths[file_index], 'rb') as file:
-                            mp3_file_content = b''
-                            mp3_file_content = file.read()
-
-                        sock.sendall(len(mp3_file_content).to_bytes(8, byteorder='big'))
-                        print(f"Sent file size: {len(mp3_file_content)}")
-                        sock.sendall(mp3_file_content)
-                        file_index += 1
-            except:
-                pass
-
-
-        # # Send JSON data after confirmation
-        # self.subFdnNodes.append('subFdn1')
-        # self.subFdnNodes.append('subFdn2')
-        # fdn_nodes_json = json.dumps(self.subFdnNodes)
-        # sock.sendall(fdn_nodes_json.encode('utf-8'))
-
-
-
-
+        # while True:
+        #     try:
+        #         if self.numofFdnSubs == 2:
+        #
+        #             # Send audio files to fdnPrimary
+        #             audio_file_paths = ["glossy.mp3", "relaxing.mp3", "risk.mp3"]
+        #
+        #             number_of_files = len(audio_file_paths)
+        #             print(f"Number of audio files to send: {number_of_files}")
+        #
+        #             # Tell node how many files to expect
+        #             sock.sendall(number_of_files.to_bytes(8, byteorder='big'))
+        #
+        #             file_index = 0
+        #
+        #             while file_index < number_of_files:
+        #                 print(audio_file_paths[file_index])
+        #                 with open(audio_file_paths[file_index], 'rb') as file:
+        #                     mp3_file_content = b''
+        #                     mp3_file_content = file.read()
+        #
+        #                 sock.sendall(len(mp3_file_content).to_bytes(8, byteorder='big'))
+        #                 print(f"Sent file size: {len(mp3_file_content)}")
+        #                 sock.sendall(mp3_file_content)
+        #                 file_index += 1
+        #     except:
+        #         pass
 
     def handle_sub_auth(self, sock, node_info):
         print(f"IN HANDLE SUB AUTH")
@@ -325,11 +313,17 @@ class BootstrapServer:
             with open(audio_file_paths[file_index], 'rb') as file:
                 mp3_file_content = b''
                 mp3_file_content = file.read()
+                md5_hash = hashlib.md5(mp3_file_content).hexdigest()
 
             sock.sendall(len(mp3_file_content).to_bytes(8, byteorder='big'))
             print(f"Sent file size: {len(mp3_file_content)}")
             sock.sendall(mp3_file_content)
-            file_index += 1
+            sock.sendall(md5_hash.encode())
+
+            fdnsub_message = sock.recv(1024).decode()
+            if fdnsub_message == "File received":
+                print(f"fdnSub: File {file_index} received")
+                file_index += 1
         ########################################################################################
 
         subfdn_message = sock.recv(1024).decode()

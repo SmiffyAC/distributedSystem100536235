@@ -20,13 +20,11 @@ class AuthSub:
         self.name = name
         self.host = ip_address_10
         self.port = self.find_open_port()
-        self.tokenSet = {}
+        self.tokenSet = set()
         self.numOfConnectedClients = 0
         print(f"AuthSub set up on: {self.host}, Node Port: {self.port}")
 
-        # COMMENTED OUT FOR TESTING
-        # print(f"IN INIT - Starting thread for handle_client_connection")
-        threading.Thread(target=self.handle_client_connection).start()
+        threading.Thread(target=self.accept_client_connection).start()
 
     def find_open_port(self):
         # Iterate through the port range to find the first open port
@@ -52,7 +50,6 @@ class AuthSub:
 
             # HANDLE THE DATA IT WILL RECEIVE PRIMARY AUTH ADDRESS FROM THE BOOTSTRAP SERVER
             if sock.recv(1024).decode() == "Ready to provide authPrimary address":
-
                 sock.sendall(b"authPrimary address")
                 # Wait for auth address from server
                 auth_primary_ip = sock.recv(1024).decode()
@@ -64,7 +61,6 @@ class AuthSub:
             # threading.Thread(target=self.connect_to_authPrimary).start()
             # self.connect_to_authPrimary(auth_primary_ip, auth_primary_port)
             threading.Thread(target=self.connect_to_authPrimary, args=(auth_primary_ip, auth_primary_port)).start()
-
 
     def connect_to_authPrimary(self, auth_primary_ip, auth_primary_port):
         print(f"\nWaiting for authPrimary to be ready at {auth_primary_ip}:{auth_primary_port}")
@@ -91,10 +87,6 @@ class AuthSub:
             if authPrimary_message_2 == "Start heartbeat":
                 self.send_heartbeat_to_authPrimary(s)
 
-                # threading.Thread(target=self.send_heartbeat_to_authPrimary, args=(s,)).start()
-                # self.handle_client_connection()
-                # threading.Thread(target=self.handle_client_connection).start()
-
     def send_heartbeat_to_authPrimary(self, s):
         print(f"IN SEND_HEARTBEAT_TO_AUTHPRIMARY - Sending heartbeat to Auth Primary")
         time.sleep(5)
@@ -107,12 +99,11 @@ class AuthSub:
             heartbeat = json.dumps(heartbeatList)
             print(f"Heartbeat Sent: {heartbeat}")
             s.sendall(heartbeat.encode())
-            # s.sendall(b"heartbeat")
-            # print(f"Sent heartbeat to Auth Primary")
+
             time.sleep(10)
 
-    def handle_client_connection(self):
-        print(f"IN HANDLE_CLIENT_CONNECTION - Inside thread for handle_client_connection")
+    def accept_client_connection(self):
+        print(f"IN ACCEPT_CLIENT_CONNECTION - Inside thread for accept_client_connection")
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             sock.bind((self.host, self.port))
             sock.listen()
@@ -122,16 +113,45 @@ class AuthSub:
                 node, addr = sock.accept()
                 print(f"Accepted connection from client with info: {addr}")
 
-                client_message = node.recv(1024).decode()
-                print(f"Received message from client: {client_message}")
+                connection_message = node.recv(1024).decode()
 
-                if client_message == 'token':
-                    time_stamp = str(time.time())
-                    token = str(self.host) + "|" + str(self.port) + "|" + time_stamp
-                    print(f"Token: {token}")
-                    node.sendall(token.encode())
-                    print(f"Sent token: {token}")
-                    # input("Press Enter to exit... - AFTER SENDING TOKEN")
+                if connection_message == 'client':
+                    threading.Thread(target=self.handle_client_connection, args=(node, addr)).start()
+
+                elif connection_message == 'fdnSub':
+                    threading.Thread(target=self.handle_fdnSub_connection, args=(node, addr)).start()
+
+    def handle_client_connection(self, node, addr):
+
+        node.sendall(b"Ready to provide token")
+
+        client_message = node.recv(1024).decode()
+        print(f"Received message from client: {client_message}")
+
+        if client_message == 'token':
+            time_stamp = str(time.time())
+            token = str(self.host) + "|" + str(self.port) + "|" + time_stamp
+            print(f"Token: {token}")
+            node.sendall(token.encode())
+            print(f"Sent token: {token}")
+            self.tokenSet.add(token)
+            print(f"Token Set: {self.tokenSet}")
+            # input("Press Enter to exit... - AFTER SENDING TOKEN")
+
+    def handle_fdnSub_connection(self, node, addr):
+
+        node.sendall(b"Ready to receive token")
+
+        received_token = node.recv(1024).decode()
+
+        print(f"Received token: {received_token}")
+
+        if received_token in self.tokenSet:
+            node.sendall(b'Valid token')
+            print(f"\n**VALID TOKEN**\n")
+        else:
+            node.sendall(b'Invalid token')
+            print(f"Invalid token")
 
 
 if __name__ == '__main__':

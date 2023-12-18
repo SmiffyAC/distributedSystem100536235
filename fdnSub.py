@@ -29,6 +29,7 @@ class FdnSub:
 
         self.audio_file_size_list = []
         self.audio_file_data_list = []
+        self.md5_hash_list = []
 
         print(f"FdnSub set up on: {self.host}, Node Port: {self.port}")
 
@@ -89,7 +90,12 @@ class FdnSub:
                 self.audio_file_size_list.append(audio_file_size)
                 print(self.audio_file_size_list)
                 self.audio_file_data_list.append(mp3_data)
+                md5_hash = sock.recv(1024)
+                print(md5_hash)
+                self.md5_hash_list.append(md5_hash)
+                print(f"MD5_hash_list: {self.md5_hash_list}")
                 print(f"File {file} received")
+                sock.sendall(b"File received")
                 file += 1
 
             sock.sendall(b"All files Received")
@@ -168,30 +174,75 @@ class FdnSub:
                 if connection_message == 'client':
                     print(f"Accepted connection from client with info: {addr}")
 
-                    node.sendall(b"Ready to provide songs")
+                    # Ask for token
+                    node.sendall(b"Please provide token")
 
-                    client_message = node.recv(1024).decode()
-                    print(f"Received message from client: {client_message}")
+                    client_token = node.recv(1024).decode()
 
-                    if client_message == 'song list':
-                        audio_file_paths = self.audio_file_list
-                        print(f"Audio file paths: {audio_file_paths}")
-                        audio_file_list = json.dumps(audio_file_paths)
-                        print(f"Audio file list: {audio_file_list}")
-                        node.sendall(audio_file_list.encode())
-                        print(f"Sent song list to client: {audio_file_list}")
+                    if self.check_token(client_token):
+                        node.sendall(b"Ready to provide songs")
 
-                        song_index = int.from_bytes(node.recv(8), byteorder='big')
-                        print(f"Song index: {song_index}")
+                        client_message = node.recv(1024).decode()
+                        print(f"Received message from client: {client_message}")
 
-                        node.sendall(self.audio_file_size_list[song_index].to_bytes(8, byteorder='big'))
-                        print(f"Sent song size: {self.audio_file_size_list[song_index]}")
-                        node.sendall(self.audio_file_data_list[song_index])
-                        print(f"Sent song data")
+                        if client_message == 'song list':
+                            audio_file_paths = self.audio_file_list
+                            print(f"Audio file paths: {audio_file_paths}")
+                            audio_file_list = json.dumps(audio_file_paths)
+                            print(f"Audio file list: {audio_file_list}")
+                            node.sendall(audio_file_list.encode())
+                            print(f"Sent song list to client: {audio_file_list}")
 
+                            song_index = int.from_bytes(node.recv(8), byteorder='big')
+                            print(f"Song index: {song_index}")
+
+                            node.sendall(self.audio_file_size_list[song_index].to_bytes(8, byteorder='big'))
+                            print(f"Sent song size: {self.audio_file_size_list[song_index]}")
+                            node.sendall(self.audio_file_data_list[song_index])
+                            print(f"Sent song data")
+                    else:
+                        node.sendall(b"Invalid token")
+                        print(f"Invalid token")
+                        node.close()
 
                 else:
                     node.close()
+
+    def check_token(self, token):
+
+        parts = token.split('|')
+
+        ip_from_token = parts[0]
+        port_from_token = int(parts[1])
+
+        print(f"IP from token: {ip_from_token}")
+        print(f"Port from token: {port_from_token}")
+
+        # Connect to the necessary authSub
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.connect((ip_from_token, port_from_token))
+
+            sock.sendall(b"fdnSub")
+
+            authsub_message = sock.recv(1024).decode()
+
+            if authsub_message == "Ready to receive token":
+                # Send the token to the authSub
+                sock.sendall(token.encode())
+                print(f"Sent token to authSub: {token}")
+
+                # Receive the response from the authSub
+                authSub_response = sock.recv(1024).decode()
+                print(f"Received response from authSub: {authSub_response}")
+
+                if authSub_response == "Valid token":
+                    print(f"\n**TOKEN IS VALID**\n")
+                    return True
+                else:
+                    return False
+
+
+
 
 
 if __name__ == '__main__':
