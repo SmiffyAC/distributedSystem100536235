@@ -181,7 +181,8 @@ class FdnSub:
                         # test4 = test.encode()
                         # print(f"TEST4 = : {test4}")
 
-                        audio_file_paths = ["glossy.mp3", "relaxing.mp3", "risk.mp3"]
+                        # audio_file_paths = ["glossy.mp3", "relaxing.mp3", "risk.mp3"]
+                        audio_file_paths = self.audio_file_list
                         print(f"Audio file paths: {audio_file_paths}")
                         audio_file_list = json.dumps(audio_file_paths)
                         print(f"Audio file list: {audio_file_list}")
