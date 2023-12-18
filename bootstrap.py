@@ -297,6 +297,7 @@ class BootstrapServer:
         # Send the number of files to expect
         number_of_files = len(audio_file_paths)
         print(f"Number of audio files to send: {number_of_files}")
+
         # Tell node how many files to expect
         sock.sendall(number_of_files.to_bytes(8, byteorder='big'))
 
@@ -306,40 +307,44 @@ class BootstrapServer:
         print(f"JSON audio file list ENCODED: {audio_file_list.encode()}")
         sock.sendall(audio_file_list.encode())
 
-        file_index = 0
+        authsub_message = sock.recv(1024).decode()
+        if authsub_message == "Ready to receive audio files":
+            file_index = 0
 
-        while file_index < number_of_files:
-            print(audio_file_paths[file_index])
-            with open(audio_file_paths[file_index], 'rb') as file:
-                mp3_file_content = b''
-                mp3_file_content = file.read()
-                md5_hash = hashlib.md5(mp3_file_content).hexdigest()
+            while file_index < number_of_files:
+                print(audio_file_paths[file_index])
+                with open(audio_file_paths[file_index], 'rb') as file:
+                    mp3_file_content = b''
+                    mp3_file_content = file.read()
+                    md5_hash = hashlib.md5(mp3_file_content).hexdigest()
 
-            sock.sendall(len(mp3_file_content).to_bytes(8, byteorder='big'))
-            print(f"Sent file size: {len(mp3_file_content)}")
-            sock.sendall(mp3_file_content)
-            sock.sendall(md5_hash.encode())
+                sock.sendall(len(mp3_file_content).to_bytes(8, byteorder='big'))
+                print(f"Sent file size: {len(mp3_file_content)}")
+                sock.sendall(mp3_file_content)
+                sock.sendall(md5_hash.encode())
 
-            fdnsub_message = sock.recv(1024).decode()
-            if fdnsub_message == "File received":
-                print(f"fdnSub: File {file_index} received")
-                file_index += 1
-        ########################################################################################
+                fdnsub_message = sock.recv(1024).decode()
+                if fdnsub_message == "File received":
+                    print(f"fdnSub: File {file_index} received")
+                    file_index += 1
+            ########################################################################################
 
-        subfdn_message = sock.recv(1024).decode()
+            subfdn_message = sock.recv(1024).decode()
 
-        if subfdn_message == "All files Received":
-            sock.sendall(b"Ready to provide fdnPrimary address")
+            if subfdn_message == "All files Received":
+                sock.sendall(b"Ready to provide fdnPrimary address")
 
-            message = sock.recv(1024).decode()
-            print(f"Received message: {message}")
+                message = sock.recv(1024).decode()
+                print(f"Received message: {message}")
 
-            if message == 'fdnPrimary address':
-                # print(f"Received message: {message}")
-                sock.sendall(self.fdn_primary_node_ip.encode('utf-8'))
-                print(f"Sent fdnPrimary address: {self.fdn_primary_node_ip}")
-                sock.sendall(self.fdn_primary_node_port.to_bytes(8, byteorder='big'))
-                print(f"Sent fdnPrimary port: {self.fdn_primary_node_port}")
+                if message == 'fdnPrimary address':
+                    # print(f"Received message: {message}")
+                    sock.sendall(self.fdn_primary_node_ip.encode('utf-8'))
+                    print(f"Sent fdnPrimary address: {self.fdn_primary_node_ip}")
+                    sock.sendall(self.fdn_primary_node_port.to_bytes(8, byteorder='big'))
+                    print(f"Sent fdnPrimary port: {self.fdn_primary_node_port}")
+
+
 
     def handle_client(self, sock, node_info):
         sock.sendall(b"Welcome client")

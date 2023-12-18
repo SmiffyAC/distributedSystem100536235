@@ -59,6 +59,8 @@ class FdnSub:
             sock.sendall(json.dumps(client_info).encode('utf-8'))
             print(f"Connected to Bootstrap Server and sent info: {client_info}")
 
+
+
             self.number_of_files = int.from_bytes(sock.recv(8), byteorder='big')
             print(f"Expected number of audio files: {self.number_of_files}")
 
@@ -68,6 +70,9 @@ class FdnSub:
             print(f"FROM BOOSTRAP - Audio file list: {self.audio_file_list}")
             self.json_audio_file_list = json.loads(audio_file_list)
             print(f"FROM BOOTSTRAP - JSON audio file list: {self.json_audio_file_list}")
+
+            sock.sendall(b"Ready to receive audio files")
+            print(f"Sent ready to receive audio files message")
 
             file = 0
 
