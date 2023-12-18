@@ -24,8 +24,8 @@ class FdnSub:
         self.numOfConnectedClients = 0
 
         self.number_of_files = None
-        self.json_audio_file_list = None
-
+        self.audio_file_list = []
+        self.json_audio_file_list = []
 
         print(f"FdnSub set up on: {self.host}, Node Port: {self.port}")
 
@@ -60,8 +60,10 @@ class FdnSub:
 
             audio_file_list = sock.recv(1024).decode()
             print(f"Received audio file list: {audio_file_list}")
+            self.audio_file_list = audio_file_list
+            print(f"FROM BOOSTRAP - Audio file list: {self.audio_file_list}")
             self.json_audio_file_list = json.loads(audio_file_list)
-            print(f"JSON audio file list: {self.json_audio_file_list}")
+            print(f"FROM BOOTSTRAP - JSON audio file list: {self.json_audio_file_list}")
 
             file = 0
 
@@ -157,18 +159,40 @@ class FdnSub:
 
             while True:
                 node, addr = sock.accept()
-                print(f"Accepted connection from client with info: {addr}")
 
-                client_message = node.recv(1024).decode()
-                print(f"Received message from client: {client_message}")
+                connection_message = node.recv(1024).decode()
+                print(f"Received connection message: {connection_message}")
+                if connection_message == 'client':
+                    print(f"Accepted connection from client with info: {addr}")
 
-                if client_message == 'audio file':
-                    time_stamp = str(time.time())
-                    token = str(self.host) + "|" + str(self.port) + "|" + time_stamp
-                    print(f"Token: {token}")
-                    node.sendall(token.encode())
-                    print(f"Sent token: {token}")
-                    # input("Press Enter to exit... - AFTER SENDING TOKEN")
+                    node.sendall(b"Ready to provide songs")
+
+                    client_message = node.recv(1024).decode()
+                    print(f"Received message from client: {client_message}")
+
+                    if client_message == 'song list':
+                        # print(f"SELF.AUDIO_FILE_LIST    : {self.audio_file_list}")
+                        # test = json.dumps(self.audio_file_list)
+                        # print(f"TEST = : {test}")
+                        # # test1 = self.json_audio_file_list
+                        # # print(f"TEST1 = : {test1}")
+                        # # test3 = self.audio_file_list
+                        # # print(f"TEST3 = : {test3}")
+                        # test4 = test.encode()
+                        # print(f"TEST4 = : {test4}")
+
+                        audio_file_paths = ["glossy.mp3", "relaxing.mp3", "risk.mp3"]
+                        print(f"Audio file paths: {audio_file_paths}")
+                        audio_file_list = json.dumps(audio_file_paths)
+                        print(f"Audio file list: {audio_file_list}")
+                        node.sendall(audio_file_list.encode())
+                        print(f"Sent song list to client: {audio_file_list}")
+
+                        # sock.sendall(test4)
+                        # print(f"Sent song list to client: {test}")
+                        # input("Press Enter to exit... - AFTER SENDING TOKEN")
+                else:
+                    node.close()
 
 
 if __name__ == '__main__':
