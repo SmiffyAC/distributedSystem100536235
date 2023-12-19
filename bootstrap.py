@@ -35,25 +35,6 @@ class BootstrapServer:
         else:
             print("No IP address starting with '10' found.")
 
-        # node_name = socket.gethostname()
-        # node_ip = socket.gethostbyname_ex(node_name)
-        # print(f"Node name: {node_ip}")
-        #
-        # bootstrap_info = socket.getaddrinfo(node_name, 50000)
-        # print(f"Bootstrap info: {bootstrap_info}")
-
-        # # Retrieve and print all IP addresses
-        # ips = self.get_ip_addresses()
-        # for interface, addresses in ips.items():
-        #     print(f"Interface: {interface}, IPv4: {addresses['IPv4']}, IPv6: {addresses['IPv6']}")
-
-        # # Retrieve and print all IP addresses
-        # ips = self.get_ip_addresses()
-        # for interface, addresses in ips.items():
-        #     print(f"Interface: {interface}")
-        #     print(f"  IPv4 addresses: {addresses['IPv4']}")
-        #     print(f"  IPv6 addresses: {addresses['IPv6']}")
-
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             sock.bind((self.host, self.port))
             sock.listen()
@@ -63,34 +44,15 @@ class BootstrapServer:
                 node, addr = sock.accept()
                 threading.Thread(target=self.handle_connection, args=(node, addr)).start()
 
-    # def get_ip_addresses(self):
-    #     ip_addresses = {}
-    #     for interface in ni.interfaces():
-    #         addresses = ni.ifaddresses(interface)
-    #         # Get IPv4 addresses
-    #         ipv4 = addresses.get(ni.AF_INET, [{}])[0].get('addr', 'No IPv4 Address')
-    #         # Get IPv6 addresses
-    #         ipv6 = addresses.get(ni.AF_INET6, [{}])[0].get('addr', 'No IPv6 Address')
-    #         ip_addresses[interface] = {'IPv4': ipv4, 'IPv6': ipv6}
-    #     return ip_addresses
-    #
-
-    # def get_ip_addresses(self):
-    #     ip_addresses = {}
-    #     for interface, addrs in psutil.net_if_addrs().items():
-    #         ip_addresses[interface] = {'IPv4': [], 'IPv6': []}
-    #         for addr in addrs:
-    #             if addr.family == socket.AF_INET:
-    #                 ip_addresses[interface]['IPv4'].append(addr.address)
-    #             elif addr.family == socket.AF_INET6:
-    #                 ip_addresses[interface]['IPv6'].append(addr.address)
-    #     return ip_addresses
-
     def handle_connection(self, node, addr):
         try:
             data = node.recv(1024).decode('utf-8')
             node_info = json.loads(data)
             print(f"\nNODE INFO: {node_info}")
+
+
+# If the node is a control node add it to the control node list
+#  if ten seconds have passed since the last control node registered, call startup
 
             if node_info['name'] == 'node':
                 print(f"\nNode connected with info: {node_info}")
@@ -120,6 +82,13 @@ class BootstrapServer:
 
         except Exception as e:
             print(f"Error: {e}")
+
+
+    # def startup()
+    #     instruct control nodes to start up 6 mod control nodes node instances
+    #
+    #     e.g. if we have 3 control nodes detected, we would tell 2 to start 3 nodes, and 1 to start 2 nodes
+    #     ... then the rest of this code should work
 
     def handle_node(self, node, node_info, addr):
 
@@ -157,17 +126,6 @@ class BootstrapServer:
             node.sendall(b"subFdn")
             self.connected_nodes.append(node)
 
-        # THE BELOW HAS BEEN COMMMENTED OUT SO I CAN TEST THE ABOVE ###############
-
-        # elif len(self.connected_nodes) == 2 or len(self.connected_nodes) == 3:
-        #     node.sendall(b"subAuth")
-        #     self.connected_nodes.append(node)
-        #
-        # elif len(self.connected_nodes) == 4 or len(self.connected_nodes) == 5:
-        #     node.sendall(b"subFdn")
-        #     self.connected_nodes.append(node)
-
-        ###########################################################################
 
     def handle_auth_primary(self, sock, node_info):
 
@@ -176,25 +134,16 @@ class BootstrapServer:
         self.auth_primary_node_ip = sock.recv(1024).decode()
         self.auth_primary_node_port = int.from_bytes(sock.recv(8), byteorder='big')
 
-        # self.auth_primary_node_ip = (node_info['ip'])
-        # self.auth_primary_node_port = (node_info['port'])
         print(f"SET Auth Primary Node IP: {self.auth_primary_node_ip}")
         print(f"SET Auth Primary Node Port: {self.auth_primary_node_port}")
 
         print(f"In handle_auth_primary")
-
-        # Send JSON data
-        # self.subAuthNodes.append('subAuth1')
-        # self.subAuthNodes.append('subAuth2')
 
         # CURRENTLY ONLY HAVE 1 SUB AUTH
         print("Waiting for connected nodes to be 3 (waiting for subAuth1 and subAuth2)")
         while True:
             try:
                 if self.numOfAuthSubs == 2:
-                    # auth_nodes_json = json.dumps(self.subAuthNodes)
-                    # print(f"Auth Nodes JSON to send: {auth_nodes_json}")
-                    # sock.sendall(auth_nodes_json.encode('utf-8'))
 
                     file_path = "clientLogins.txt"
                     with open(file_path, 'r') as file:
@@ -207,9 +156,6 @@ class BootstrapServer:
                 # Return to top of loop and try again
                 pass
 
-        # if len(self.connected_nodes) == 2:
-        #     self.subAuthNodes.append(self.connected_nodes[2])
-
     def handle_fdn_primary(self, sock, node_info):
 
         sock.sendall(b"Address and Port")
@@ -217,41 +163,13 @@ class BootstrapServer:
         self.fdn_primary_node_ip = sock.recv(1024).decode()
         self.fdn_primary_node_port = int.from_bytes(sock.recv(8), byteorder='big')
 
-        # self.auth_primary_node_ip = (node_info['ip'])
-        # self.auth_primary_node_port = (node_info['port'])
         print(f"SET Auth Primary Node IP: {self.fdn_primary_node_ip}")
         print(f"SET Auth Primary Node Port: {self.fdn_primary_node_port}")
 
         print(f"In handle_fdn_primary")
 
         print(f"Waiting for connected nodes to be 6 (waiting for subFdn1 and subFdn2)")
-        # while True:
-        #     try:
-        #         if self.numofFdnSubs == 2:
-        #
-        #             # Send audio files to fdnPrimary
-        #             audio_file_paths = ["glossy.mp3", "relaxing.mp3", "risk.mp3"]
-        #
-        #             number_of_files = len(audio_file_paths)
-        #             print(f"Number of audio files to send: {number_of_files}")
-        #
-        #             # Tell node how many files to expect
-        #             sock.sendall(number_of_files.to_bytes(8, byteorder='big'))
-        #
-        #             file_index = 0
-        #
-        #             while file_index < number_of_files:
-        #                 print(audio_file_paths[file_index])
-        #                 with open(audio_file_paths[file_index], 'rb') as file:
-        #                     mp3_file_content = b''
-        #                     mp3_file_content = file.read()
-        #
-        #                 sock.sendall(len(mp3_file_content).to_bytes(8, byteorder='big'))
-        #                 print(f"Sent file size: {len(mp3_file_content)}")
-        #                 sock.sendall(mp3_file_content)
-        #                 file_index += 1
-        #     except:
-        #         pass
+
 
     def handle_sub_auth(self, sock, node_info):
         print(f"IN HANDLE SUB AUTH")
@@ -290,7 +208,7 @@ class BootstrapServer:
         self.subFdnNodes.append({"name": fdnsub_name, "ip": node_info['ip'], "port": node_info['port']})
         print(f"Sub Fdn Nodes List: {self.subFdnNodes}")
 
-        # Send audio files to fdnPrimary#########################################################
+        # Send audio files to fdnPrimary
         audio_file_paths = ["glossy.mp3", "relaxing.mp3", "risk.mp3"]
         print(f"Audio file paths: {audio_file_paths}")
 
@@ -327,7 +245,6 @@ class BootstrapServer:
                 if fdnsub_message == "File received":
                     print(f"fdnSub: File {file_index} received")
                     file_index += 1
-            ########################################################################################
 
             subfdn_message = sock.recv(1024).decode()
 

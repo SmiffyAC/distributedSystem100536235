@@ -214,7 +214,7 @@ class Client:
                         print(f"Generated MD5 Hash: {generated_md5_hash}")
 
                         if received_md5_hash == generated_md5_hash:
-                            print("MD5 Hashes match")
+                            print("\n** MD5 Hashes match **\n")
                         else:
                             print("MD5 Hashes do not match - file may be corrupted")
 
