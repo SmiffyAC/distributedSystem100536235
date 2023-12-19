@@ -4,6 +4,7 @@ import subprocess
 # from playsound import playsound
 # import pygame
 import base64
+import hashlib
 
 
 class Client:
@@ -203,10 +204,20 @@ class Client:
                     self.audio_file_size_list.append(audio_file_size)
                     print(self.audio_file_size_list)
                     self.audio_file_data_list.append(mp3_data)
+                    received_md5_hash = s.recv(1024).decode()
+                    print(f"MD5 Hash: {received_md5_hash}")
                     print(f"File received")
 
                     with open("Received " + song_choice + '.mp3', 'wb') as f:
                         f.write(mp3_data)
+                        generated_md5_hash = hashlib.md5(mp3_data).hexdigest()
+                        print(f"Generated MD5 Hash: {generated_md5_hash}")
+
+                        if received_md5_hash == generated_md5_hash:
+                            print("MD5 Hashes match")
+                        else:
+                            print("MD5 Hashes do not match - file may be corrupted")
+
 
                     saved_song_name = "Received " + song_choice + '.mp3'
                     print(f"Song saved as {saved_song_name}")

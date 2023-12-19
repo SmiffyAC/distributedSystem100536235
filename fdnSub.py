@@ -205,6 +205,8 @@ class FdnSub:
                             print(f"Sent song size: {self.audio_file_size_list[song_index]}")
                             node.sendall(self.audio_file_data_list[song_index])
                             print(f"Sent song data")
+                            node.sendall(self.md5_hash_list[song_index])
+                            print(f"Sent md5 hash {self.md5_hash_list[song_index]}")
                     else:
                         node.sendall(b"Invalid token")
                         print(f"Invalid token")
