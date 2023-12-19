@@ -6,6 +6,7 @@ import threading
 
 import os
 import sys
+import time
 
 
 # from netifaces import interfaces, ifaddresses, AF_INET
@@ -56,10 +57,12 @@ class Node:
                 #     self.handle_sub_creation()
 
                 elif response == "subAuth":
-                    self.handle_subAuth_creation()
+                    delay = int.from_bytes(sock.recv(8), byteorder='big')
+                    self.handle_subAuth_creation(delay)
 
                 elif response == "subFdn":
-                    self.handle_subFdn_creation()
+                    delay = int.from_bytes(sock.recv(8), byteorder='big')
+                    self.handle_subFdn_creation(delay)
 
     def handle_authPrimary_creation(self):
 
@@ -67,6 +70,7 @@ class Node:
 
         pid = subprocess.Popen([sys.executable, "authPrimary.py"],
                                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NEW_CONSOLE).pid
+        sys.exit()
 
     def handle_fdnPrimary_creation(self):
 
@@ -74,24 +78,29 @@ class Node:
 
         pid = subprocess.Popen([sys.executable, "fdnPrimary.py"],
                                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NEW_CONSOLE).pid
+        sys.exit()
 
-    # def handle_sub_creation(self):
-    #     # Needs to start listening for connections from either the fdnPrimary or authPrimary
-    #     pass
+    def handle_subAuth_creation(self, delay):
 
-    def handle_subAuth_creation(self):
+        # Delay
+        time.sleep(delay)
 
         print(f"Starting authSub.py")
 
         pid = subprocess.Popen([sys.executable, "authSub.py"],
                                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NEW_CONSOLE).pid
+        sys.exit()
 
-    def handle_subFdn_creation(self):
+    def handle_subFdn_creation(self, delay):
+
+        # Delay
+        time.sleep(delay)
 
         print(f"Starting fdnSub.py")
 
         pid = subprocess.Popen([sys.executable, "fdnSub.py"],
                                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NEW_CONSOLE).pid
+        sys.exit()
 
 
 if __name__ == '__main__':

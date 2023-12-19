@@ -21,6 +21,7 @@ class BootstrapServer:
         self.numofFdnSubs = 0  # Variable to store the number of subFdn nodes
         self.nodes = {}  # Dictionary to store registered nodes
         self.client = None
+        self.control_nodes = []  # List to store the control nodes
 
     def start_server(self):
 
@@ -50,13 +51,17 @@ class BootstrapServer:
             node_info = json.loads(data)
             print(f"\nNODE INFO: {node_info}")
 
+            # If the node is a control node add it to the control node list
+            #  if ten seconds have passed since the last control node registered, call startup
+            if node_info['name'] == 'controlNode':
+                self.control_nodes.append(node)
+                self.last_control_node_time = time.time()
+                threading.Thread(target=self.check_startup).start()
 
-# If the node is a control node add it to the control node list
-#  if ten seconds have passed since the last control node registered, call startup
-
-            if node_info['name'] == 'node':
+            elif node_info['name'] == 'node':
                 print(f"\nNode connected with info: {node_info}")
                 print(f"Node connected from: {addr}\n")
+                self.connected_nodes.append(node)
                 self.handle_node(node, node_info, addr)
 
             elif node_info['name'] == 'authPrimary':
@@ -83,12 +88,49 @@ class BootstrapServer:
         except Exception as e:
             print(f"Error: {e}")
 
+    def check_startup(self):
+        # Save the time of the last control node registration
+        last_time = self.last_control_node_time
+        # Wait for ten seconds
+        time.sleep(10)
+        # Check if no new control node has registered in the last ten seconds
+        if last_time == self.last_control_node_time:
+            self.startup()
 
-    # def startup()
-    #     instruct control nodes to start up 6 mod control nodes node instances
-    #
-    #     e.g. if we have 3 control nodes detected, we would tell 2 to start 3 nodes, and 1 to start 2 nodes
-    #     ... then the rest of this code should work
+    def startup(self):
+        #     instruct control nodes to start up 6 mod control nodes node instances
+        #
+        #     e.g. if we have 3 control nodes detected, we would tell 2 to start 3 nodes, and 1 to start 2 nodes
+        #     ... then the rest of this code should work
+        # Determine the number of node.py instances each control node should start
+        total_node_instances = 6
+        num_control_nodes = len(self.control_nodes)
+
+        if num_control_nodes == 0:
+            print("No control nodes available to start node instances.")
+            return
+
+        # Calculate the number of instances per control node
+        instances_per_node = total_node_instances // num_control_nodes
+        extra_instances = total_node_instances % num_control_nodes
+
+        print(f"Starting up {total_node_instances} node instances using {num_control_nodes} control nodes.")
+
+        # Send instructions to each control node
+        for i, control_node in enumerate(self.control_nodes):
+            # Determine the number of instances for this particular control node
+            num_instances = instances_per_node + (1 if i < extra_instances else 0)
+            delay = i * 5
+
+            # Prepare and send the instruction
+            instruction = json.dumps({
+                "command": "start_nodes",
+                "num_instances": num_instances,
+                "delay": delay
+            })
+            control_node.sendall(instruction.encode('utf-8'))
+
+            print(f"Instructed control node {i + 1} to start {num_instances} node instances with a delay of {delay} seconds.")
 
     def handle_node(self, node, node_info, addr):
 
@@ -100,32 +142,37 @@ class BootstrapServer:
         # connected_nodes[5] = fdnSub2
 
         # Tell the first connected node to be authPrimary
-        if len(self.connected_nodes) == 0:
+        if len(self.connected_nodes) == 1:
             print("Length of connected nodes: ")
             print(len(self.connected_nodes))
             node.sendall(b"authPrimary")
-            self.connected_nodes.append(node)  # Store the socket object
+            # self.connected_nodes.append(node)  # Store the socket object
             print(f"Node handling authPrimary creation: {addr}")
 
         # Tell the second and third connected node to be AuthSub1 (TEMP)
-        elif len(self.connected_nodes) == 1 or len(self.connected_nodes) == 2:
+        elif len(self.connected_nodes) == 2 or len(self.connected_nodes) == 3:
             node.sendall(b"subAuth")
-            self.connected_nodes.append(node)
+            # Send delay
+            delay = len(self.connected_nodes)
+            node.sendall(delay.to_bytes(8, byteorder='big'))
+            # self.connected_nodes.append(node)
 
 
         # Tell the fourth connected node to be fdnPrimary (TEMP)
-        elif len(self.connected_nodes) == 3:
+        elif len(self.connected_nodes) == 4:
             print("Length of connected nodes: ")
             print(len(self.connected_nodes))
             node.sendall(b"fdnPrimary")
-            self.connected_nodes.append(node)  # Store the socket object
+            # self.connected_nodes.append(node)  # Store the socket object
             print(f"Node handling fdnPrimary creation: {node_info['ip']}")
 
         # Tell the fifth and sixth connected node to be FdnSub1 (TEMP)
-        elif len(self.connected_nodes) == 4 or len(self.connected_nodes) == 5:
+        elif len(self.connected_nodes) == 5 or len(self.connected_nodes) == 6:
             node.sendall(b"subFdn")
-            self.connected_nodes.append(node)
-
+            # Send delay
+            delay = len(self.connected_nodes)
+            node.sendall(delay.to_bytes(8, byteorder='big'))
+            # self.connected_nodes.append(node)
 
     def handle_auth_primary(self, sock, node_info):
 
@@ -144,7 +191,6 @@ class BootstrapServer:
         while True:
             try:
                 if self.numOfAuthSubs == 2:
-
                     file_path = "clientLogins.txt"
                     with open(file_path, 'r') as file:
                         file_content = file.read()
@@ -163,13 +209,12 @@ class BootstrapServer:
         self.fdn_primary_node_ip = sock.recv(1024).decode()
         self.fdn_primary_node_port = int.from_bytes(sock.recv(8), byteorder='big')
 
-        print(f"SET Auth Primary Node IP: {self.fdn_primary_node_ip}")
-        print(f"SET Auth Primary Node Port: {self.fdn_primary_node_port}")
+        print(f"SET Fdn Primary Node IP: {self.fdn_primary_node_ip}")
+        print(f"SET Fdn Primary Node Port: {self.fdn_primary_node_port}")
 
         print(f"In handle_fdn_primary")
 
         print(f"Waiting for connected nodes to be 6 (waiting for subFdn1 and subFdn2)")
-
 
     def handle_sub_auth(self, sock, node_info):
         print(f"IN HANDLE SUB AUTH")
@@ -260,8 +305,6 @@ class BootstrapServer:
                     print(f"Sent fdnPrimary address: {self.fdn_primary_node_ip}")
                     sock.sendall(self.fdn_primary_node_port.to_bytes(8, byteorder='big'))
                     print(f"Sent fdnPrimary port: {self.fdn_primary_node_port}")
-
-
 
     def handle_client(self, sock, node_info):
         sock.sendall(b"Welcome client")
