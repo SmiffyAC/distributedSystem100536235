@@ -178,6 +178,7 @@ class FdnSub:
                 print(f"Received connection message: {connection_message}")
                 if connection_message == 'client':
                     print(f"Accepted connection from client with info: {addr}")
+                    self.numOfConnectedClients += 1
 
                     # Ask for token
                     node.sendall(b"Please provide token")
@@ -207,10 +208,17 @@ class FdnSub:
                             print(f"Sent song data")
                             node.sendall(self.md5_hash_list[song_index])
                             print(f"Sent md5 hash {self.md5_hash_list[song_index]}")
+
+                            final_message = node.recv(1024).decode()
+                            if final_message == "File received":
+                                print(f"\n** Client received file - Closing connection with client **\n")
+                                node.close()
+                                self.numOfConnectedClients -= 1
                     else:
                         node.sendall(b"Invalid token")
                         print(f"Invalid token")
                         node.close()
+                        self.numOfConnectedClients -= 1
 
                 else:
                     node.close()

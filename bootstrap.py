@@ -4,6 +4,7 @@ import json
 import subprocess
 import hashlib
 import time
+import os
 
 
 class BootstrapServer:
@@ -253,9 +254,18 @@ class BootstrapServer:
         self.subFdnNodes.append({"name": fdnsub_name, "ip": node_info['ip'], "port": node_info['port']})
         print(f"Sub Fdn Nodes List: {self.subFdnNodes}")
 
-        # Send audio files to fdnPrimary
-        audio_file_paths = ["glossy.mp3", "relaxing.mp3", "risk.mp3"]
+        # Get list of all files in the 'audio_files' folder
+        all_files = os.listdir('audio_files/using')
+
+        # Filter out only audio files, assuming .mp3 extension
+        audio_file_paths = [file for file in all_files if file.endswith('.mp3')]
+
         print(f"Audio file paths: {audio_file_paths}")
+
+
+        # # Send audio files to fdnPrimary
+        # audio_file_paths = ["glossy.mp3", "relaxing.mp3", "risk.mp3"]
+        # print(f"Audio file paths: {audio_file_paths}")
 
         # Send the number of files to expect
         number_of_files = len(audio_file_paths)
@@ -276,7 +286,7 @@ class BootstrapServer:
 
             while file_index < number_of_files:
                 print(audio_file_paths[file_index])
-                with open(audio_file_paths[file_index], 'rb') as file:
+                with open("audio_files/using/" + audio_file_paths[file_index], 'rb') as file:
                     mp3_file_content = b''
                     mp3_file_content = file.read()
                     md5_hash = hashlib.md5(mp3_file_content).hexdigest()

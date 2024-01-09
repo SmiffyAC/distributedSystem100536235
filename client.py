@@ -152,75 +152,82 @@ class Client:
 
             while True:
 
-                s.sendall(b"client")
+                try:
+                    s.sendall(b"client")
 
-                # FDNSUB will check token and send back a message
-                token_request = s.recv(1024).decode()
+                    # FDNSUB will check token and send back a message
+                    token_request = s.recv(1024).decode()
 
-                if token_request == "Please provide token":
-                    s.sendall(self.token.encode())
-                    print(f"Sent token: {self.token}")
+                    if token_request == "Please provide token":
+                        s.sendall(self.token.encode())
+                        print(f"Sent token: {self.token}")
 
-                fdnSub_message = s.recv(1024).decode()
+                    fdnSub_message = s.recv(1024).decode()
 
-                if fdnSub_message == "Ready to provide songs":
-                    s.sendall(b"song list")
+                    if fdnSub_message == "Ready to provide songs":
+                        s.sendall(b"song list")
 
-                    audio_file_list = s.recv(1024).decode()
-                    print(f"Received audio file list: {audio_file_list}")
-                    self.audio_file_list = audio_file_list
-                    print(f"FROM FDNSUB - Audio file list: {self.audio_file_list}")
-                    self.json_audio_file_list = json.loads(audio_file_list)
-                    print(f"FROM FDNSUB - JSON audio file list: {self.json_audio_file_list}")
+                        audio_file_list = s.recv(1024).decode()
+                        print(f"Received audio file list: {audio_file_list}")
+                        self.audio_file_list = audio_file_list
+                        print(f"FROM FDNSUB - Audio file list: {self.audio_file_list}")
+                        self.json_audio_file_list = json.loads(audio_file_list)
+                        print(f"FROM FDNSUB - JSON audio file list: {self.json_audio_file_list}")
 
-                    while True:
-                        song_choice = input("Enter the name of the song you would like to download: ")
+                        while True:
+                            song_choice = input("Enter the name of the song you would like to download: ")
 
-                        json_audio_file_list = json.loads(self.json_audio_file_list)
+                            json_audio_file_list = json.loads(self.json_audio_file_list)
 
-                        print(f"Audio file list: {json_audio_file_list}")
-                        song_index = json_audio_file_list.index(song_choice + ".mp3")
-                        print(f"Song Index: {song_index}")
+                            print(f"Audio file list: {json_audio_file_list}")
+                            song_index = json_audio_file_list.index(song_choice + ".mp3")
+                            print(f"Song Index: {song_index}")
 
-                        if song_choice in self.json_audio_file_list:
-                            s.sendall(song_index.to_bytes(8, byteorder='big'))
-                            break
-                        else:
-                            print("Song not found. Please try again.")
-                            continue
+                            if song_choice in self.json_audio_file_list:
+                                s.sendall(song_index.to_bytes(8, byteorder='big'))
+                                break
+                            else:
+                                print("Song not found. Please try again.")
+                                continue
 
-                    audio_file_size_data = s.recv(8)
-                    audio_file_size = int.from_bytes(audio_file_size_data, byteorder='big')
-                    print(f"Audio File size: {audio_file_size}")
+                        audio_file_size_data = s.recv(8)
+                        audio_file_size = int.from_bytes(audio_file_size_data, byteorder='big')
+                        print(f"Audio File size: {audio_file_size}")
 
-                    mp3_data = b''
-                    mp3_data_encoded = ''
-                    while len(mp3_data) < audio_file_size:
-                        chunk = s.recv(min(4096, audio_file_size - len(mp3_data)))
-                        if not chunk:
-                            break
-                        mp3_data += chunk
+                        mp3_data = b''
+                        mp3_data_encoded = ''
+                        while len(mp3_data) < audio_file_size:
+                            chunk = s.recv(min(4096, audio_file_size - len(mp3_data)))
+                            if not chunk:
+                                break
+                            mp3_data += chunk
 
-                    self.audio_file_size_list.append(audio_file_size)
-                    print(self.audio_file_size_list)
-                    self.audio_file_data_list.append(mp3_data)
-                    received_md5_hash = s.recv(1024).decode()
-                    print(f"MD5 Hash: {received_md5_hash}")
-                    print(f"File received")
+                        self.audio_file_size_list.append(audio_file_size)
+                        print(self.audio_file_size_list)
+                        self.audio_file_data_list.append(mp3_data)
+                        received_md5_hash = s.recv(1024).decode()
+                        print(f"MD5 Hash: {received_md5_hash}")
+                        print(f"File received")
 
-                    with open("Received " + song_choice + '.mp3', 'wb') as f:
-                        f.write(mp3_data)
-                        generated_md5_hash = hashlib.md5(mp3_data).hexdigest()
-                        print(f"Generated MD5 Hash: {generated_md5_hash}")
+                        with open("Received " + song_choice + '.mp3', 'wb') as f:
+                            f.write(mp3_data)
+                            generated_md5_hash = hashlib.md5(mp3_data).hexdigest()
+                            print(f"Generated MD5 Hash: {generated_md5_hash}")
 
-                        if received_md5_hash == generated_md5_hash:
-                            print("\n** MD5 Hashes match **\n")
-                        else:
-                            print("MD5 Hashes do not match - file may be corrupted")
+                            if received_md5_hash == generated_md5_hash:
+                                print("\n** MD5 Hashes match **\n")
+                            else:
+                                print("MD5 Hashes do not match - file may be corrupted")
 
+                        s.sendall(b"File received")
 
-                    saved_song_name = "Received " + song_choice + '.mp3'
-                    print(f"Song saved as {saved_song_name}")
+                        saved_song_name = "Received " + song_choice + '.mp3'
+                        print(f"Song saved as {saved_song_name}")
+                        s.close()
+                finally:
+                    s.close()
+                    print("Connection closed")
+                    break
 
 
 if __name__ == '__main__':

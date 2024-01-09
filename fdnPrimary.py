@@ -29,7 +29,7 @@ class FdnPrimary:
 
         self.subFdnWithLowestNumOfClients_ip = None
         self.subFdnWithLowestNumOfClients_port = None
-        self.subFdnWithLowestNumOfClients_numOfConnectedClients = 0
+        self.subFdnWithLowestNumOfClients_numOfConnectedClients = 100
 
         self.fdnSub_list = []
         self.fdnSub_file = []
@@ -150,7 +150,12 @@ class FdnPrimary:
             hb_fdnsub_ip = json_heartbeat[0]
             hb_fdnsub_port = json_heartbeat[1]
             # Get the number of connected clients
-            hb_numofconnectedclients = json_heartbeat[2]
+            hb_numofconnectedclients = int(json_heartbeat[2])
+
+            print(f"\nhb_fdnsub_ip: {hb_fdnsub_ip}")
+            print(f"hb_fdnsub_port: {hb_fdnsub_port}")
+            print(f"hb_numofconnectedclients: {hb_numofconnectedclients}\n")
+            print(f"subFdnWithLowestNumOfClients_numOfConnectedClients: {self.subFdnWithLowestNumOfClients_numOfConnectedClients}")
 
             print(f"Received heartbeat message from {hb_fdnsub_ip}, {hb_fdnsub_port}: {json_heartbeat}")
 
@@ -160,16 +165,23 @@ class FdnPrimary:
                 self.subFdnWithLowestNumOfClients_numOfConnectedClients = hb_numofconnectedclients
                 print(f"New subFdn with lowest number of clients: {self.subFdnWithLowestNumOfClients_ip}, {self.subFdnWithLowestNumOfClients_port}, {self.subFdnWithLowestNumOfClients_numOfConnectedClients}")
 
+            elif hb_fdnsub_ip == self.subFdnWithLowestNumOfClients_ip and hb_fdnsub_port == self.subFdnWithLowestNumOfClients_port:
+                self.subFdnWithLowestNumOfClients_ip = hb_fdnsub_ip
+                self.subFdnWithLowestNumOfClients_port = hb_fdnsub_port
+                self.subFdnWithLowestNumOfClients_numOfConnectedClients = hb_numofconnectedclients
+                print(f"Updated values for subFdn with lowest number of clients: {self.subFdnWithLowestNumOfClients_ip}, {self.subFdnWithLowestNumOfClients_port}, {self.subFdnWithLowestNumOfClients_numOfConnectedClients}")
+
             elif hb_numofconnectedclients < self.subFdnWithLowestNumOfClients_numOfConnectedClients:
                 self.subFdnWithLowestNumOfClients_ip = hb_fdnsub_ip
                 self.subFdnWithLowestNumOfClients_port = hb_fdnsub_port
                 self.subFdnWithLowestNumOfClients_numOfConnectedClients = hb_numofconnectedclients
-                print(f"New subFdn with lowest number of clients: {self.subFdnWithLowestNumOfClients_ip}, {self.subFdnWithLowestNumOfClients_port}, {self.subFdnWithLowestNumOfClients_numOfConnectedClients}")
+                print(f"\n** New subFdn with lowest number of clients: {self.subFdnWithLowestNumOfClients_ip}, {self.subFdnWithLowestNumOfClients_port}, {self.subFdnWithLowestNumOfClients_numOfConnectedClients} **\n")
 
             else:
                 print("No new subFdn with lowest number of clients")
+                print(f"Current subFdn with lowest number of clients: {self.subFdnWithLowestNumOfClients_ip}, {self.subFdnWithLowestNumOfClients_port}, {self.subFdnWithLowestNumOfClients_numOfConnectedClients}")
 
-            time.sleep(5)
+            # time.sleep(5)
 
     def handle_client_connection(self, sock):
 
