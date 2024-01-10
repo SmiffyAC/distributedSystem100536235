@@ -59,8 +59,6 @@ class FdnSub:
             sock.sendall(json.dumps(client_info).encode('utf-8'))
             print(f"Connected to Bootstrap Server and sent info: {client_info}")
 
-
-
             self.number_of_files = int.from_bytes(sock.recv(8), byteorder='big')
             print(f"Expected number of audio files: {self.number_of_files}")
 
@@ -174,54 +172,68 @@ class FdnSub:
             while True:
                 node, addr = sock.accept()
 
-                connection_message = node.recv(1024).decode()
-                print(f"Received connection message: {connection_message}")
-                if connection_message == 'client':
-                    print(f"Accepted connection from client with info: {addr}")
-                    self.numOfConnectedClients += 1
+                try:
+                    connection_message = node.recv(1024).decode()
+                    print(f"Received connection message: {connection_message}")
+                    if connection_message == 'client':
+                        print(f"Accepted connection from client with info: {addr}")
+                        self.numOfConnectedClients += 1
 
-                    # Ask for token
-                    node.sendall(b"Please provide token")
+                        # Ask for token
+                        node.sendall(b"Please provide token")
 
-                    client_token = node.recv(1024).decode()
+                        client_token = node.recv(1024).decode()
 
-                    if self.check_token(client_token):
-                        node.sendall(b"Ready to provide songs")
+                        if self.check_token(client_token):
+                            node.sendall(b"Ready to provide songs")
 
-                        client_message = node.recv(1024).decode()
-                        print(f"Received message from client: {client_message}")
+                            client_message = node.recv(1024).decode()
+                            print(f"Received message from client: {client_message}")
 
-                        if client_message == 'song list':
-                            audio_file_paths = self.audio_file_list
-                            print(f"Audio file paths: {audio_file_paths}")
-                            audio_file_list = json.dumps(audio_file_paths)
-                            print(f"Audio file list: {audio_file_list}")
-                            node.sendall(audio_file_list.encode())
-                            print(f"Sent song list to client: {audio_file_list}")
+                            if client_message == 'song list':
+                                audio_file_paths = self.audio_file_list
+                                print(f"Audio file paths: {audio_file_paths}")
+                                audio_file_list = json.dumps(audio_file_paths)
+                                print(f"Audio file list: {audio_file_list}")
+                                node.sendall(audio_file_list.encode())
+                                print(f"Sent song list to client: {audio_file_list}")
 
-                            song_index = int.from_bytes(node.recv(8), byteorder='big')
-                            print(f"Song index: {song_index}")
+                                song_index = int.from_bytes(node.recv(8), byteorder='big')
+                                print(f"Song index: {song_index}")
 
-                            node.sendall(self.audio_file_size_list[song_index].to_bytes(8, byteorder='big'))
-                            print(f"Sent song size: {self.audio_file_size_list[song_index]}")
-                            node.sendall(self.audio_file_data_list[song_index])
-                            print(f"Sent song data")
-                            node.sendall(self.md5_hash_list[song_index])
-                            print(f"Sent md5 hash {self.md5_hash_list[song_index]}")
+                                node.sendall(self.audio_file_size_list[song_index].to_bytes(8, byteorder='big'))
+                                print(f"Sent song size: {self.audio_file_size_list[song_index]}")
+                                node.sendall(self.audio_file_data_list[song_index])
+                                print(f"Sent song data")
+                                node.sendall(self.md5_hash_list[song_index])
+                                print(f"Sent md5 hash {self.md5_hash_list[song_index]}")
 
-                            final_message = node.recv(1024).decode()
-                            if final_message == "File received":
-                                print(f"\n** Client received file - Closing connection with client **\n")
-                                node.close()
-                                self.numOfConnectedClients -= 1
+                                final_message = node.recv(1024).decode()
+                                if final_message == "File received":
+                                    print(f"\n** Client received file - Closing connection with client **\n")
+                                    node.close()
+                                    self.numOfConnectedClients -= 1
+                        else:
+                            node.sendall(b"Invalid token")
+                            print(f"Invalid token")
+                            node.close()
+                            self.numOfConnectedClients -= 1
+
                     else:
-                        node.sendall(b"Invalid token")
-                        print(f"Invalid token")
                         node.close()
-                        self.numOfConnectedClients -= 1
 
-                else:
+                except:
+                    print("\n** Client disconnected unexpectedly. **")
+                    self.numOfConnectedClients -= 1
+                    print(f"Number of connected clients change to: {self.numOfConnectedClients}")
+                    print("** Connection with client closed. **\n")
+
+                # except Exception as e:
+                #     print(f"An error occurred: {e}")
+
+                finally:
                     node.close()
+
 
     def check_token(self, token):
 
@@ -255,9 +267,6 @@ class FdnSub:
                     return True
                 else:
                     return False
-
-
-
 
 
 if __name__ == '__main__':

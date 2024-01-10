@@ -184,21 +184,29 @@ class FdnPrimary:
             # time.sleep(5)
 
     def handle_client_connection(self, sock):
+        try:
+            client_message = sock.recv(1024).decode()
+            print(f"Received message from client: {client_message}")
 
-        client_message = sock.recv(1024).decode()
-        print(f"Received message from client: {client_message}")
+            if client_message == "Need fdnSub address":
+                fdnsub_ip_to_send = self.subFdnWithLowestNumOfClients_ip
+                print(f"fdnSub_ip_to_send: {fdnsub_ip_to_send}")
+                fdnsub_port_to_send = self.subFdnWithLowestNumOfClients_port
+                print(f"fdnSub_port_to_send: {fdnsub_port_to_send}")
 
-        if client_message == "Need fdnSub address":
-            fdnsub_ip_to_send = self.subFdnWithLowestNumOfClients_ip
-            print(f"fdnSub_ip_to_send: {fdnsub_ip_to_send}")
-            fdnsub_port_to_send = self.subFdnWithLowestNumOfClients_port
-            print(f"fdnSub_port_to_send: {fdnsub_port_to_send}")
+                # Send the ip and port to the fdnSub
+                sock.sendall(fdnsub_ip_to_send.encode())
+                print(f"Sent fdnSub ip: {fdnsub_ip_to_send}")
+                sock.sendall(fdnsub_port_to_send.to_bytes(8, byteorder='big'))
+                print(f"Sent fdnSub port: {fdnsub_port_to_send}")
 
-            # Send the ip and port to the fdnSub
-            sock.sendall(fdnsub_ip_to_send.encode())
-            print(f"Sent fdnSub ip: {fdnsub_ip_to_send}")
-            sock.sendall(fdnsub_port_to_send.to_bytes(8, byteorder='big'))
-            print(f"Sent fdnSub port: {fdnsub_port_to_send}")
+        except ConnectionResetError:
+            print("Client disconnected unexpectedly.")
+        except Exception as e:
+            print(f"An error occurred: {e}")
+        finally:
+            sock.close()
+            print("Connection to client closed.")
 
 
 if __name__ == '__main__':
