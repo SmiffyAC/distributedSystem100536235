@@ -1,8 +1,7 @@
 import socket
 import json
 import subprocess
-# from playsound import playsound
-# import pygame
+import pygame
 import base64
 import hashlib
 
@@ -224,10 +223,62 @@ class Client:
                         saved_song_name = "Received " + song_choice + '.mp3'
                         print(f"Song saved as {saved_song_name}")
                         s.close()
+                        # Play the song
+                        self.play_song(saved_song_name)
                 finally:
                     s.close()
                     print("Connection closed")
                     break
+
+    def play_song(self, song_path):
+        # Initialize Pygame
+        pygame.init()
+        pygame.mixer.init()
+
+        # Load and play the song
+        pygame.mixer.music.load(song_path)
+        pygame.mixer.music.play()
+
+        print("Press space to pause, press space again to unpause, press q to quit")
+
+        running = True
+        paused = False
+        while running:
+
+            if not paused:
+                client_input = input("Press SPACE to pause (Press 'q' to quit song) : ")
+                if client_input == ' ':
+                    paused = True
+                    pygame.mixer.music.pause()
+                    print("** PAUSED **")
+                elif client_input == 'q':
+                    running = False
+            else:
+                client_input = input("Press SPACE to unpause (Press 'q' to quit song) : ")
+                if client_input == ' ':
+                    paused = False
+                    pygame.mixer.music.unpause()
+                    print("** UNPAUSED **")
+                elif client_input == 'q':
+                    running = False
+
+            # for event in pygame.event.get():
+            #     if event.type == pygame.KEYDOWN:
+            #         if event.key == pygame.K_SPACE:
+            #             # Toggle pause
+            #             if paused:
+            #                 pygame.mixer.music.unpause()
+            #                 paused = False
+            #             else:
+            #                 pygame.mixer.music.pause()
+            #                 paused = True
+            #     elif event.type == pygame.QUIT:
+            #         running = False
+
+        print("** Song finished playing **")
+
+        pygame.mixer.music.stop()
+        pygame.quit()
 
 
 if __name__ == '__main__':
