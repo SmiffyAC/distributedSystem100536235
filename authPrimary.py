@@ -180,12 +180,59 @@ class AuthPrimary:
 
     def handle_client_connection(self, sock):
 
+        # Add account functionality
+        # Receive the client's username and password
+        # username = sock.recv(1024).decode()
+        # print(f"Received username: {username}")
+        # password = sock.recv(1024).decode()
+        # print(f"Received password: {password}")
+
+        # Check if the username already exists
+        # If it does, send a message to the client saying that the username already exists
+        # If it doesn't, add the username and password to the file
+        # Send a message to the client saying that the account was created successfully
+
+        client_logins_file = 'clientLogins.txt'
+        while True:
+            # Receive the client's username and password
+            username = sock.recv(1024).decode()
+            print(f"Received username: {username}")
+            password = sock.recv(1024).decode()
+            print(f"Received password: {password}")
+
+            # Read the existing accounts
+            with open(client_logins_file, 'r') as file:
+                existing_accounts = file.readlines()
+
+            # Check if the username already exists
+            account_exists = False
+            for account in existing_accounts:
+                stored_username, _ = account.strip().split(',')
+                if username == stored_username:
+                    account_exists = True
+                    break
+
+            if account_exists:
+                # Inform client that username is taken
+                print(f"\n** User {username} found! **\n")
+                sock.sendall("User found".encode())
+                break
+            else:
+                # Add new account and inform client of successful creation
+                with open(client_logins_file, 'a') as file:
+                    # Ensure the new account starts on a new line
+                    if existing_accounts and not existing_accounts[-1].endswith('\n'):
+                        file.write('\n')
+                    file.write(f"{username},{password}\n")
+                print(f"\n** Added new account: {username}, {password} **\n")
+                sock.sendall("Account created successfully.".encode())
+                break
+
+        # Send the client to the authSub with the lowest number of connected clients
         client_message = sock.recv(1024).decode()
         print(f"Received message from client: {client_message}")
 
         if client_message == 'Need authSub address':
-            # LATER THE BELOW WILL BE PUT INTO A LOAD BALANCER
-
             authsub_ip_to_send = self.subAuthWithLowestNumOfClients_ip
             print(f"authSub_ip_to_send: {authsub_ip_to_send}")
             authsub_port_to_send = self.subAuthWithLowestNumOfClients_port

@@ -67,7 +67,6 @@ class Client:
         self.connect_to_authPrimary(auth_primary_ip, auth_primary_port)
 
     def connect_to_authPrimary(self, auth_primary_ip, auth_primary_port):
-
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.connect((auth_primary_ip, auth_primary_port))
 
@@ -76,7 +75,25 @@ class Client:
             # Tell the AuthPrimary that this is a client
             s.sendall(b"client")
 
-            # Ask for the authAub address
+            while True:
+                # Get username and password from the user
+                username = input("\nEnter your username: ")
+                password = input("Enter your password: ")
+
+                # Send the username and password to AuthPrimary
+                s.sendall(username.encode())
+                s.sendall(password.encode())
+
+                # Receive response from AuthPrimary
+                response = s.recv(1024).decode()
+                print("\n** " + response + " **\n")
+
+                if response == "Account created successfully.":
+                    break
+                elif response == "User found":
+                    break
+
+            # Ask for the authSub address
             s.sendall(b"Need authSub address")
 
             # Receive the authSub address
@@ -205,13 +222,13 @@ class Client:
                         print(self.audio_file_size_list)
                         self.audio_file_data_list.append(mp3_data)
                         received_md5_hash = s.recv(1024).decode()
-                        print(f"MD5 Hash: {received_md5_hash}")
+                        print(f"\nReceived MD5 Hash: {received_md5_hash}")
                         print(f"File received")
 
                         with open("Received " + song_choice + '.mp3', 'wb') as f:
                             f.write(mp3_data)
                             generated_md5_hash = hashlib.md5(mp3_data).hexdigest()
-                            print(f"Generated MD5 Hash: {generated_md5_hash}")
+                            print(f"\nGenerated MD5 Hash: {generated_md5_hash}")
 
                             if received_md5_hash == generated_md5_hash:
                                 print("\n** MD5 Hashes match **\n")
@@ -221,13 +238,13 @@ class Client:
                         s.sendall(b"File received")
 
                         saved_song_name = "Received " + song_choice + '.mp3'
-                        print(f"Song saved as {saved_song_name}")
+                        print(f"\n** Song saved as {saved_song_name} **\n")
                         s.close()
+                        print("\n** Connection closed **\n")
                         # Play the song
                         self.play_song(saved_song_name)
                 finally:
                     s.close()
-                    print("Connection closed")
                     break
 
     def play_song(self, song_path):
@@ -275,7 +292,7 @@ class Client:
             #     elif event.type == pygame.QUIT:
             #         running = False
 
-        print("** Song finished playing **")
+        print("\n** Song finished playing **\n")
 
         pygame.mixer.music.stop()
         pygame.quit()
