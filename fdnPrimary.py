@@ -3,7 +3,7 @@ import json
 import subprocess
 import base64
 import threading
-
+import argparse
 import os
 import sys
 import time
@@ -38,6 +38,9 @@ class FdnPrimary:
 
         threading.Thread(target=self.accept_client_connection).start()
 
+        self.control_node_ips = []  # List to store the control node IPs
+        self.control_node_ports = []  # List to store the control node ports
+
     def find_open_port(self):
         # Iterate through the port range to find the first open port
         port_range = (50001, 50010)
@@ -59,12 +62,19 @@ class FdnPrimary:
             sock.sendall(json.dumps(client_info).encode('utf-8'))
             print(f"Connected to Bootstrap Server and sent info: {client_info}")
 
-            # HANDLE THE DATA IT WILL RECEIVE FROM THE BOOTSTRAP SERVER
-            if sock.recv(1024).decode() == "Address and Port":
-                sock.sendall(self.host.encode())
-                print(f"Sent fdnPrimary ip: {self.host}")
-                sock.sendall(self.port.to_bytes(8, byteorder='big'))
-                print(f"Sent fdnPrimary port: {self.port}")
+            if sock.recv(1024).decode() == "Ready to provide controlNode list":
+                # Receive the control node ips
+                self.control_node_ips = json.loads(sock.recv(1024).decode())
+                print(f"Received controlNode ips: {self.control_node_ips}")
+                self.control_node_ports = json.loads(sock.recv(1024).decode())
+                print(f"Received controlNode ports: {self.control_node_ports}")
+
+            # # HANDLE THE DATA IT WILL RECEIVE FROM THE BOOTSTRAP SERVER
+            # if sock.recv(1024).decode() == "Address and Port":
+            #     sock.sendall(self.host.encode())
+            #     print(f"Sent fdnPrimary ip: {self.host}")
+            #     sock.sendall(self.port.to_bytes(8, byteorder='big'))
+            #     print(f"Sent fdnPrimary port: {self.port}")
 
             # number_of_files = int.from_bytes(sock.recv(8), byteorder='big')
             # print(f"Expected number of audio files: {number_of_files}")
@@ -94,6 +104,9 @@ class FdnPrimary:
             #     file += 1
 
             # threading.Thread(target=self.accept_client_connection).start()
+
+    def connect_to_control_node(self):
+        pass
 
     def accept_client_connection(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
@@ -128,8 +141,11 @@ class FdnPrimary:
                     sock.sendall(b"Address and Port")
                     print(f"Asked subFdn for address and port")
 
-                    self.fdnSub_ip = sock.recv(1024).decode()
-                    print(f"Received fdnSub address: {self.fdnSub_ip}")
+                    address_message = sock.recv(1024).decode()
+
+                    if address_message == "Address":
+                        self.fdnSub_ip = sock.recv(1024).decode()
+                        print(f"Received fdnSub address: {self.fdnSub_ip}")
                     self.fdnSub_port = int.from_bytes(sock.recv(8), byteorder='big')
                     print(f"Received fdnSub port: {self.fdnSub_port}")
                     break
@@ -210,8 +226,14 @@ class FdnPrimary:
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="Run FdnPrimary")
+    parser.add_argument("ip", type=str, help="IP address to use")
+    parser.add_argument("port", type=int, help="Port number to use")
+
+    args = parser.parse_args()
+
     new_FdnPrimary = FdnPrimary(name="fdnPrimary")
 
     # Connect the client to the Bootstrap Server
-    bootstrap_ip = open('bootstrap_ip.txt', 'r').read().strip()
-    new_FdnPrimary.connect_to_bootstrap(bootstrap_ip, 50000)
+    # bootstrap_ip = open('bootstrap_ip.txt', 'r').read().strip()
+    new_FdnPrimary.connect_to_bootstrap(args.ip, args.port)

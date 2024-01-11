@@ -23,6 +23,8 @@ class BootstrapServer:
         self.nodes = {}  # Dictionary to store registered nodes
         self.client = None
         self.control_nodes = []  # List to store the control nodes
+        self.control_node_ips = []  # List to store the control node IPs
+        self.control_node_ports = []  # List to store the control node ports
 
     def start_server(self):
 
@@ -56,6 +58,8 @@ class BootstrapServer:
             #  if ten seconds have passed since the last control node registered, call startup
             if node_info['name'] == 'controlNode':
                 self.control_nodes.append(node)
+                self.control_node_ips.append(node_info['ip'])
+                self.control_node_ports.append(node_info['port'])
                 self.last_control_node_time = time.time()
                 threading.Thread(target=self.check_startup).start()
 
@@ -71,6 +75,8 @@ class BootstrapServer:
                 self.handle_auth_primary(node, node_info)
 
             elif node_info['name'] == 'fdnPrimary':
+                print(f"\nFdn Primary connected with info: {node_info}")
+                print(f"Fdn Primary connected from: {addr}\n")
                 self.handle_fdn_primary(node, node_info)
 
             elif node_info['name'] == 'authSub':
@@ -95,7 +101,7 @@ class BootstrapServer:
         # Wait for ten seconds
         time.sleep(10)
         # Check if no new control node has registered in the last ten seconds
-        if last_time == self.last_control_node_time:
+        if last_time == self.last_control_node_time and len(self.control_nodes) >= 3:
             self.startup()
 
     def startup(self):
@@ -115,23 +121,50 @@ class BootstrapServer:
         instances_per_node = total_node_instances // num_control_nodes
         extra_instances = total_node_instances % num_control_nodes
 
-        print(f"Starting up {total_node_instances} node instances using {num_control_nodes} control nodes.")
+        # print(f"Starting up {total_node_instances} node instances using {num_control_nodes} control nodes.")
+        auth_instruction = json.dumps({
+                    "command": "start_PrimaryAuth",
+                })
+        self.control_nodes[0].sendall(auth_instruction.encode('utf-8'))
+        print("Sent start_PrimaryAuth")
+
+        fdn_instruction = json.dumps({
+                    "command": "start_PrimaryFdn",
+                })
+        time.sleep(1)
+        self.control_nodes[1].sendall(fdn_instruction.encode('utf-8'))
+        print("Sent start_PrimaryFdn")
 
         # Send instructions to each control node
-        for i, control_node in enumerate(self.control_nodes):
-            # Determine the number of instances for this particular control node
-            num_instances = instances_per_node + (1 if i < extra_instances else 0)
-            delay = i * 5
+        # for i, control_node in enumerate(self.control_nodes):
+        #     # Determine the number of instances for this particular control node
+        #     # num_instances = instances_per_node + (1 if i < extra_instances else 0)
+        #     # delay = i * 5
+        #     #
+        #     # # Prepare and send the instruction
+        #     # instruction = json.dumps({
+        #     #     "command": "start_nodes",
+        #     #     "num_instances": num_instances,
+        #     #     "delay": delay
+        #     # })
+        #     # control_node.sendall(instruction.encode('utf-8'))
+        #     #
+        #     # print(f"Instructed control node {i + 1} to start {num_instances} node instances with a delay of {delay} seconds.")
+        #     if i == 0:
+        #         instruction = json.dumps({
+        #             "command": "start_PrimaryAuth",
+        #             "num_instances": 1,
+        #             "delay": 0
+        #         })
+        #     elif i == 1:
+        #         instruction = json.dumps({
+        #             "command": "start_PrimaryFdn",
+        #             "num_instances": 1,
+        #             "delay": 0
+        #         })
+        #     control_node.sendall(instruction.encode('utf-8'))
 
-            # Prepare and send the instruction
-            instruction = json.dumps({
-                "command": "start_nodes",
-                "num_instances": num_instances,
-                "delay": delay
-            })
-            control_node.sendall(instruction.encode('utf-8'))
 
-            print(f"Instructed control node {i + 1} to start {num_instances} node instances with a delay of {delay} seconds.")
 
     def handle_node(self, node, node_info, addr):
 
@@ -177,45 +210,41 @@ class BootstrapServer:
 
     def handle_auth_primary(self, sock, node_info):
 
-        sock.sendall(b"Address and Port")
+        sock.sendall(b"Ready to provide controlNode list")
+        print("Sent Ready to provide controlNode list message")
+        # Send the list of control node ips
+        control_node_ips = json.dumps(self.control_node_ips)
+        print(f"JSON control node ips: {control_node_ips}")
+        sock.sendall(control_node_ips.encode())
+        # Send the list of control node ports
+        control_node_port_list = json.dumps(self.control_node_ports)
+        print(f"JSON control node port list: {control_node_port_list}")
+        sock.sendall(control_node_port_list.encode())
 
-        self.auth_primary_node_ip = sock.recv(1024).decode()
-        self.auth_primary_node_port = int.from_bytes(sock.recv(8), byteorder='big')
+        file_path = "clientLogins.txt"
+        with open(file_path, 'r') as file:
+            file_content = file.read()
 
-        print(f"SET Auth Primary Node IP: {self.auth_primary_node_ip}")
-        print(f"SET Auth Primary Node Port: {self.auth_primary_node_port}")
+        print(f"File content to send: {file_content}")
+        sock.sendall(file_content.encode('utf-8'))
 
-        print(f"In handle_auth_primary")
-
-        # CURRENTLY ONLY HAVE 1 SUB AUTH
-        print("Waiting for connected nodes to be 3 (waiting for subAuth1 and subAuth2)")
-        while True:
-            try:
-                if self.numOfAuthSubs == 2:
-                    file_path = "clientLogins.txt"
-                    with open(file_path, 'r') as file:
-                        file_content = file.read()
-
-                    print(f"File content to send: {file_content}")
-                    sock.sendall(file_content.encode('utf-8'))
-                    break
-            except:
-                # Return to top of loop and try again
-                pass
+        # ADD STUFF ABOUT HEARTBEAT FOR KILLING NODES
 
     def handle_fdn_primary(self, sock, node_info):
-
-        sock.sendall(b"Address and Port")
-
-        self.fdn_primary_node_ip = sock.recv(1024).decode()
-        self.fdn_primary_node_port = int.from_bytes(sock.recv(8), byteorder='big')
-
-        print(f"SET Fdn Primary Node IP: {self.fdn_primary_node_ip}")
-        print(f"SET Fdn Primary Node Port: {self.fdn_primary_node_port}")
-
         print(f"In handle_fdn_primary")
 
-        print(f"Waiting for connected nodes to be 6 (waiting for subFdn1 and subFdn2)")
+        sock.sendall(b"Ready to provide controlNode list")
+        print("Sent Ready to provide controlNode list message")
+        # Send the list of control node ips
+        control_node_ips = json.dumps(self.control_node_ips)
+        print(f"JSON control node ips: {control_node_ips}")
+        sock.sendall(control_node_ips.encode())
+        # Send the list of control node ports
+        control_node_port_list = json.dumps(self.control_node_ports)
+        print(f"JSON control node port list: {control_node_port_list}")
+        sock.sendall(control_node_port_list.encode())
+
+        # ADD STUFF ABOUT HEARTBEAT FOR KILLING NODES
 
     def handle_sub_auth(self, sock, node_info):
         print(f"IN HANDLE SUB AUTH")

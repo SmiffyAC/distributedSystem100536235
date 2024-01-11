@@ -1,3 +1,4 @@
+import argparse
 import socket
 import json
 import subprocess
@@ -24,7 +25,7 @@ class AuthSub:
         self.numOfConnectedClients = 0
         print(f"AuthSub set up on: {self.host}, Node Port: {self.port}")
 
-        threading.Thread(target=self.accept_client_connection).start()
+        # threading.Thread(target=self.accept_client_connection).start()
 
     def find_open_port(self):
         # Iterate through the port range to find the first open port
@@ -74,18 +75,23 @@ class AuthSub:
 
             authPrimary_message = s.recv(1024).decode()
             print(f"Received message from Auth Primary: {authPrimary_message}")
-
+            #
             # Provide the authPrimary with the address and port of the authSub
             if authPrimary_message == "Address and Port":
-                s.sendall(self.host.encode())
+                # s.sendall(b"Address")
+                authSub_ip = self.host
+                s.sendall(authSub_ip.encode())
                 print(f"Sent AuthSub address: {self.host}")
-                s.sendall(self.port.to_bytes(8, byteorder='big'))
+                authSub_port = self.port
+                s.sendall(authSub_port.to_bytes(8, byteorder='big'))
                 print(f"Sent AuthSub port: {self.port}")
+
 
             authPrimary_message_2 = s.recv(1024).decode()
 
             if authPrimary_message_2 == "Start heartbeat":
                 self.send_heartbeat_to_authPrimary(s)
+                # threading.Thread(target=self.send_heartbeat_to_authPrimary, args=(s,)).start()
 
     def send_heartbeat_to_authPrimary(self, s):
         print(f"IN SEND_HEARTBEAT_TO_AUTHPRIMARY - Sending heartbeat to Auth Primary")
@@ -155,8 +161,17 @@ class AuthSub:
 
 
 if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser(description="Run AuthSub")
+    parser.add_argument("ip", type=str, help="IP address to use")
+    parser.add_argument("port", type=int, help="Port number to use")
+
+    args = parser.parse_args()
+
     new_AuthSub = AuthSub(name="authSub")
 
     # Connect the client to the Bootstrap Server
-    bootstrap_ip = open('bootstrap_ip.txt', 'r').read().strip()
-    new_AuthSub.connect_to_bootstrap(bootstrap_ip, 50000)
+    # bootstrap_ip = open('bootstrap_ip.txt', 'r').read().strip()
+    # new_AuthSub.connect_to_bootstrap(bootstrap_ip, 50000)
+    threading.Thread(target=new_AuthSub.accept_client_connection).start()
+    new_AuthSub.connect_to_authPrimary(args.ip, args.port)

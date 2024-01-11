@@ -3,10 +3,11 @@ import json
 import subprocess
 import base64
 import threading
-
+import argparse
 import os
 import sys
 import time
+import random
 
 
 class AuthPrimary:
@@ -38,6 +39,9 @@ class AuthPrimary:
 
         threading.Thread(target=self.accept_client_connection).start()
 
+        self.control_node_ips = []  # List to store the control node IPs
+        self.control_node_ports = []  # List to store the control node ports
+
     def find_open_port(self):
         # Iterate through the port range to find the first open port
         port_range = (50001, 50010)
@@ -59,32 +63,47 @@ class AuthPrimary:
             sock.sendall(json.dumps(client_info).encode('utf-8'))
             print(f"Connected to Bootstrap Server and sent info: {client_info}")
 
-            # HANDLE THE DATA IT WILL RECEIVE FROM THE BOOTSTRAP SERVER
-            if sock.recv(1024).decode() == "Address and Port":
-                sock.sendall(self.host.encode())
-                print(f"Sent authPrimary ip: {self.host}")
-                sock.sendall(self.port.to_bytes(8, byteorder='big'))
-                print(f"Sent authPrimary port: {self.port}")
-
-            # Wait for list from server
-            # self.authSub_list.append(sock.recv(1024).decode())
-            # print(f"Received list data: {self.authSub_list}")
-            # received_list_data = sock.recv(1024).decode()
-            # print(f"\nReceived list data: {received_list_data}")
-            # auth_sub_info = json.loads(received_list_data)
-            # self.authSub_list.append(auth_sub_info)
-            # print(f"\nReceived list data: {self.authSub_list}")
+            if sock.recv(1024).decode() == "Ready to provide controlNode list":
+                # Receive the control node ips
+                self.control_node_ips = json.loads(sock.recv(1024).decode())
+                print(f"Received controlNode ips: {self.control_node_ips}")
+                self.control_node_ports = json.loads(sock.recv(1024).decode())
+                print(f"Received controlNode ports: {self.control_node_ports}")
 
             self.authSub_file = sock.recv(1024).decode()
             print(f"Received file data: {self.authSub_file}")
 
-            # threading.Thread(target=self.accept_client_connection).start()
+            self.generate_auth_subs()
 
-            # self.do_somthing_else()
+    def generate_auth_subs(self):
+        # While two authSubs have not been created, generate one
+        num_generated = 0
+        while num_generated < 2:
+            random_control_node_index = random.randint(0, len(self.control_node_ips) - 1)
+            control_node_ip = self.control_node_ips[random_control_node_index]
+            print(f"random_control_node_ip: {control_node_ip}")
+            control_node_port = self.control_node_ports[random_control_node_index]
+            print(f"random_control_node_port: {control_node_port}")
 
-    # def do_somthing_else(self):
-    #     # Keep the program running - wait for user input
-    #     input("Press Enter to exit...")
+            # Create the authSub
+            threading.Thread(target=self.connect_to_control_node, args=(control_node_ip, control_node_port)).start()
+            num_generated += 1
+            time.sleep(0.5)
+
+
+    def connect_to_control_node(self, control_node_ip, control_node_port):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.connect((control_node_ip, control_node_port))
+
+            sock.send(b"authSub")
+
+            if sock.recv(1024).decode() == "Address and Port":
+                sock.sendall(self.host.encode())
+                print(f"Sent AuthPrimary address: {self.host}")
+                sock.sendall(self.port.to_bytes(8, byteorder='big'))
+                print(f"Sent AuthPrimary port: {self.port}")
+
+
 
     def accept_client_connection(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
@@ -94,15 +113,19 @@ class AuthPrimary:
 
             while True:
                 node, addr = sock.accept()
-                print(f"\nAccepted connection from {addr}")
 
                 connection_message = node.recv(1024).decode()
 
                 if connection_message == 'authSub':
+                    print(f"\nAccepted connection from {addr}")
+                    print(f"Received connection message: {connection_message}")
                     threading.Thread(target=self.handle_authSub_connection, args=(node, addr)).start()
-
                 elif connection_message == 'client':
+                    print(f"\nAccepted connection from {addr}")
+                    print(f"Received connection message: {connection_message}")
                     threading.Thread(target=self.handle_client_connection, args=(node,)).start()
+                else:
+                    node.close()
 
     def handle_authSub_connection(self, sock, addr):
 
@@ -110,26 +133,34 @@ class AuthPrimary:
         self.numOfAuthSubs += 1
         print(f"Number of authSubs: {self.numOfAuthSubs}")
 
-        print("Waiting for second authSub to connect")
+        # print("Waiting for second authSub to connect")
 
         while True:
             try:
                 if self.numOfAuthSubs == 2:
                     # Receive the authSub address and port
                     sock.sendall(b"Address and Port")
-                    print(f"Asked subAuth for address and port")
+                    print(f"Asked subAuth for address and port - NUMOFSUBAUTHS = {self.numOfAuthSubs}")
 
+                    # address_message = sock.recv(1024).decode()
+                    # print(f"\nReceived message: {address_message}\n")
+                    #
+                    # if address_message == "Address":
                     self.authSub_ip = sock.recv(1024).decode()
                     print(f"Received authSub address: {self.authSub_ip}")
                     self.authSub_port = int.from_bytes(sock.recv(8), byteorder='big')
                     print(f"Received authSub port: {self.authSub_port}")
                     break
+                else:
+                    print(f"Waiting for second authSub to connect - NUMOFSUBAUTHS = {self.numOfAuthSubs}")
+                    time.sleep(1)
             except:
                 pass
 
         # Tell subAuths to start sending heartbeats
         sock.sendall(b"Start heartbeat")
-        self.handle_authSub_heartbeat(sock, addr)
+        # self.handle_authSub_heartbeat(sock, addr)
+        threading.Thread(target=self.handle_authSub_heartbeat, args=(sock, addr)).start()
 
 
         # print(f"\n")
@@ -255,8 +286,15 @@ class AuthPrimary:
 
 
 if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser(description="Run AuthPrimary")
+    parser.add_argument("ip", type=str, help="IP address to use")
+    parser.add_argument("port", type=int, help="Port number to use")
+
+    args = parser.parse_args()
+
     new_AuthPrimary = AuthPrimary(name="authPrimary")
 
     # Connect the client to the Bootstrap Server
-    bootstrap_ip = open('bootstrap_ip.txt', 'r').read().strip()
-    new_AuthPrimary.connect_to_bootstrap(bootstrap_ip, 50000)
+    # bootstrap_ip = open('bootstrap_ip.txt', 'r').read().strip()
+    new_AuthPrimary.connect_to_bootstrap(args.ip, args.port)
