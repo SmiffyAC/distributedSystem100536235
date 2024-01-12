@@ -88,7 +88,7 @@ class AuthPrimary:
             # Create the authSub
             threading.Thread(target=self.connect_to_control_node, args=(control_node_ip, control_node_port)).start()
             num_generated += 1
-            time.sleep(0.5)
+            time.sleep(1)
 
 
     def connect_to_control_node(self, control_node_ip, control_node_port):

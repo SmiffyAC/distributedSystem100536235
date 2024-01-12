@@ -42,6 +42,14 @@ class FdnPrimary:
         self.control_node_ips = []  # List to store the control node IPs
         self.control_node_ports = []  # List to store the control node ports
 
+        self.number_of_files = None
+        self.audio_file_list = []
+        self.json_audio_file_list = []
+
+        self.audio_file_size_list = []
+        self.audio_file_data_list = []
+        self.md5_hash_list = []
+
     def find_open_port(self):
         # Iterate through the port range to find the first open port
         port_range = (50001, 50010)
@@ -69,6 +77,52 @@ class FdnPrimary:
                 print(f"Received controlNode ips: {self.control_node_ips}")
                 self.control_node_ports = json.loads(sock.recv(1024).decode())
                 print(f"Received controlNode ports: {self.control_node_ports}")
+
+                # RECEIVED THE AUDIO FILES
+
+                self.number_of_files = int.from_bytes(sock.recv(8), byteorder='big')
+                print(f"Expected number of audio files: {self.number_of_files}")
+
+                audio_file_list = sock.recv(1024).decode()
+                print(f"Received audio file list: {audio_file_list}")
+                self.audio_file_list = audio_file_list
+                print(f"FROM BOOSTRAP - Audio file list: {self.audio_file_list}")
+                self.json_audio_file_list = json.loads(audio_file_list)
+                print(f"FROM BOOTSTRAP - JSON audio file list: {self.json_audio_file_list}")
+
+                sock.sendall(b"Ready to receive audio files")
+                print(f"Sent ready to receive audio files message")
+
+                file = 0
+
+                # audio_file_size_list = []
+                # audio_file_data_list = []
+
+                while file < self.number_of_files:
+                    audio_file_size_data = sock.recv(8)
+                    audio_file_size = int.from_bytes(audio_file_size_data, byteorder='big')
+                    print(f"Audio File size: {audio_file_size}")
+
+                    mp3_data = b''
+                    mp3_data_encoded = ''
+                    while len(mp3_data) < audio_file_size:
+                        chunk = sock.recv(min(4096, audio_file_size - len(mp3_data)))
+                        if not chunk:
+                            break
+                        mp3_data += chunk
+
+                    self.audio_file_size_list.append(audio_file_size)
+                    print(self.audio_file_size_list)
+                    self.audio_file_data_list.append(mp3_data)
+                    md5_hash = sock.recv(1024)
+                    print(md5_hash)
+                    self.md5_hash_list.append(md5_hash)
+                    print(f"MD5_hash_list: {self.md5_hash_list}")
+                    print(f"File {file} received")
+                    sock.sendall(b"File received")
+                    file += 1
+
+                sock.sendall(b"All files Received")
 
                 # Generate the fdnSubs
                 self.generate_fdn_subs()

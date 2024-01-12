@@ -244,44 +244,7 @@ class BootstrapServer:
         print(f"JSON control node port list: {control_node_port_list}")
         sock.sendall(control_node_port_list.encode())
 
-        # ADD STUFF ABOUT HEARTBEAT FOR KILLING NODES
-
-    # def handle_sub_auth(self, sock, node_info):
-    #     print(f"IN HANDLE SUB AUTH")
-    #
-    #     print(f"Connected subAuth info: {node_info['ip'], node_info['port']}")
-    #
-    #     # Generate a name for the subAuth node based on the number of subAuth nodes
-    #     authsub_name = "authSub" + str(len(self.subAuthNodes) + 1)
-    #
-    #     self.subAuthNodes.append({"name": authsub_name, "ip": node_info['ip'], "port": node_info['port']})
-    #     print(f"Sub Auth Nodes List: {self.subAuthNodes}")
-    #
-    #     sock.sendall(b"Ready to provide authPrimary address")
-    #
-    #     message = sock.recv(1024).decode()
-    #     print(f"Received message: {message}")
-    #
-    #     if message == 'authPrimary address':
-    #         # print(f"Received message: {message}")
-    #         sock.sendall(self.auth_primary_node_ip.encode('utf-8'))
-    #         print(f"Sent authPrimary address: {self.auth_primary_node_ip}")
-    #         sock.sendall(self.auth_primary_node_port.to_bytes(8, byteorder='big'))
-    #         print(f"Sent authPrimary port: {self.auth_primary_node_port}")
-    #
-    #         self.numOfAuthSubs += 1
-    #         print(f"NEW Number of subAuth nodes: {self.numOfAuthSubs}")
-
-    def handle_sub_fdn(self, sock, node_info):
-        print(f"IN HANDLE SUB FDN")
-
-        print(f"Connected subFdn info: {node_info['ip'], node_info['port']}")
-
-        # Generate a name for the subFdn node based on the number of subFdn nodes
-        fdnsub_name = "fdnSub" + str(len(self.subFdnNodes) + 1)
-
-        self.subFdnNodes.append({"name": fdnsub_name, "ip": node_info['ip'], "port": node_info['port']})
-        print(f"Sub Fdn Nodes List: {self.subFdnNodes}")
+        # ADD STUFF FOR SENDING THE AUDIO FILES
 
         # Get list of all files in the 'audio_files' folder
         all_files = os.listdir('audio_files/using')
@@ -290,11 +253,6 @@ class BootstrapServer:
         audio_file_paths = [file for file in all_files if file.endswith('.mp3')]
 
         print(f"Audio file paths: {audio_file_paths}")
-
-
-        # # Send audio files to fdnPrimary
-        # audio_file_paths = ["glossy.mp3", "relaxing.mp3", "risk.mp3"]
-        # print(f"Audio file paths: {audio_file_paths}")
 
         # Send the number of files to expect
         number_of_files = len(audio_file_paths)
@@ -344,6 +302,107 @@ class BootstrapServer:
                     print(f"Sent fdnPrimary address: {self.fdn_primary_node_ip}")
                     sock.sendall(self.fdn_primary_node_port.to_bytes(8, byteorder='big'))
                     print(f"Sent fdnPrimary port: {self.fdn_primary_node_port}")
+
+        # ADD STUFF ABOUT HEARTBEAT FOR KILLING NODES
+
+    # def handle_sub_auth(self, sock, node_info):
+    #     print(f"IN HANDLE SUB AUTH")
+    #
+    #     print(f"Connected subAuth info: {node_info['ip'], node_info['port']}")
+    #
+    #     # Generate a name for the subAuth node based on the number of subAuth nodes
+    #     authsub_name = "authSub" + str(len(self.subAuthNodes) + 1)
+    #
+    #     self.subAuthNodes.append({"name": authsub_name, "ip": node_info['ip'], "port": node_info['port']})
+    #     print(f"Sub Auth Nodes List: {self.subAuthNodes}")
+    #
+    #     sock.sendall(b"Ready to provide authPrimary address")
+    #
+    #     message = sock.recv(1024).decode()
+    #     print(f"Received message: {message}")
+    #
+    #     if message == 'authPrimary address':
+    #         # print(f"Received message: {message}")
+    #         sock.sendall(self.auth_primary_node_ip.encode('utf-8'))
+    #         print(f"Sent authPrimary address: {self.auth_primary_node_ip}")
+    #         sock.sendall(self.auth_primary_node_port.to_bytes(8, byteorder='big'))
+    #         print(f"Sent authPrimary port: {self.auth_primary_node_port}")
+    #
+    #         self.numOfAuthSubs += 1
+    #         print(f"NEW Number of subAuth nodes: {self.numOfAuthSubs}")
+
+    def handle_sub_fdn(self, sock, node_info):
+        print(f"IN HANDLE SUB FDN")
+
+        print(f"Connected subFdn info: {node_info['ip'], node_info['port']}")
+
+        # Generate a name for the subFdn node based on the number of subFdn nodes
+        fdnsub_name = "fdnSub" + str(len(self.subFdnNodes) + 1)
+
+        self.subFdnNodes.append({"name": fdnsub_name, "ip": node_info['ip'], "port": node_info['port']})
+        print(f"Sub Fdn Nodes List: {self.subFdnNodes}")
+
+        # # Get list of all files in the 'audio_files' folder
+        # all_files = os.listdir('audio_files/using')
+        #
+        # # Filter out only audio files, assuming .mp3 extension
+        # audio_file_paths = [file for file in all_files if file.endswith('.mp3')]
+        #
+        # print(f"Audio file paths: {audio_file_paths}")
+
+
+        # # Send audio files to fdnPrimary
+        # audio_file_paths = ["glossy.mp3", "relaxing.mp3", "risk.mp3"]
+        # print(f"Audio file paths: {audio_file_paths}")
+
+        # # Send the number of files to expect
+        # number_of_files = len(audio_file_paths)
+        # print(f"Number of audio files to send: {number_of_files}")
+        #
+        # # Tell node how many files to expect
+        # sock.sendall(number_of_files.to_bytes(8, byteorder='big'))
+        #
+        # # Send the list of audio files to chose from
+        # audio_file_list = json.dumps(audio_file_paths)
+        # print(f"JSON audio file list: {audio_file_list}")
+        # print(f"JSON audio file list ENCODED: {audio_file_list.encode()}")
+        # sock.sendall(audio_file_list.encode())
+
+        # authsub_message = sock.recv(1024).decode()
+        # if authsub_message == "Ready to receive audio files":
+        #     file_index = 0
+        #
+        #     while file_index < number_of_files:
+        #         print(audio_file_paths[file_index])
+        #         with open("audio_files/using/" + audio_file_paths[file_index], 'rb') as file:
+        #             mp3_file_content = b''
+        #             mp3_file_content = file.read()
+        #             md5_hash = hashlib.md5(mp3_file_content).hexdigest()
+        #
+        #         sock.sendall(len(mp3_file_content).to_bytes(8, byteorder='big'))
+        #         print(f"Sent file size: {len(mp3_file_content)}")
+        #         sock.sendall(mp3_file_content)
+        #         sock.sendall(md5_hash.encode())
+        #
+        #         fdnsub_message = sock.recv(1024).decode()
+        #         if fdnsub_message == "File received":
+        #             print(f"fdnSub: File {file_index} received")
+        #             file_index += 1
+        #
+        #     subfdn_message = sock.recv(1024).decode()
+        #
+        #     if subfdn_message == "All files Received":
+        #         sock.sendall(b"Ready to provide fdnPrimary address")
+        #
+        #         message = sock.recv(1024).decode()
+        #         print(f"Received message: {message}")
+        #
+        #         if message == 'fdnPrimary address':
+        #             # print(f"Received message: {message}")
+        #             sock.sendall(self.fdn_primary_node_ip.encode('utf-8'))
+        #             print(f"Sent fdnPrimary address: {self.fdn_primary_node_ip}")
+        #             sock.sendall(self.fdn_primary_node_port.to_bytes(8, byteorder='big'))
+        #             print(f"Sent fdnPrimary port: {self.fdn_primary_node_port}")
 
     def handle_client(self, sock, node_info):
         sock.sendall(b"Welcome client")
