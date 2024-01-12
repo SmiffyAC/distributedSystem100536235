@@ -10,15 +10,19 @@ class ControlNode:
     def __init__(self, name):
         # Initialize the control node with a name and host
         node_name = socket.gethostname()
+        hostname, aliases, ip_addresses = socket.gethostbyname_ex(node_name)
+
+        # Filter for IP addresses that start with '10'
+        ip_address_10 = next((ip for ip in ip_addresses if ip.startswith('10')), None)
+        node_name = socket.gethostname()
         node_ip = socket.gethostbyname(node_name)
         self.name = name
-        self.host = node_ip
+        self.host = ip_address_10
         self.port = self.find_open_port()
         self.retry_delay = 5  # seconds for retrying connection
         self.max_retries = 5  # maximum number of retry attempts
         self.instance_creation_delay = 5  # seconds delay between node instance creations
 
-########################################################################################################################
     def find_open_port(self):
         # Iterate through the port range to find the first open port
         port_range = (50001, 50010)
@@ -58,8 +62,6 @@ class ControlNode:
                     threading.Thread(target=self.handle_subFdn_creation, args=(fdnPrimary_ip, fdnPrimary_port, 0)).start()
                 else:
                     node.close()
-
-########################################################################################################################
 
     def connect_to_bootstrap(self, bootstrap_host, bootstrap_port):
         # Retry mechanism for connecting to the Bootstrap Server
@@ -110,26 +112,20 @@ class ControlNode:
     def start_node_instance(self):
         # Logic to start a node.py instance
         print("Starting a node.py instance...")
-        # For example, using subprocess to start a new Python script
-        # subprocess.Popen(["python", "node.py"])
         pid = subprocess.Popen([sys.executable, "node.py"],
                                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NEW_CONSOLE).pid
-
-########################################################################################################################
 
     def handle_authPrimary_creation(self):
         print(f"Starting authPrimary.py and passing BS addr of {bootstrap_ip} and port {50000}")
 
         pid = subprocess.Popen([sys.executable, "authPrimary.py", str(bootstrap_ip), str(50000)],
                                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NEW_CONSOLE).pid
-        # sys.exit()
 
     def handle_fdnPrimary_creation(self):
         print(f"Starting fdnPrimary.py and passing BS addr of {bootstrap_ip} and port {50000}")
 
         pid = subprocess.Popen([sys.executable, "fdnPrimary.py", str(bootstrap_ip), str(50000)],
                                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NEW_CONSOLE).pid
-        # sys.exit()
 
     def handle_subAuth_creation(self, authPrimary_ip, authPrimary_port, delay):
 
@@ -140,7 +136,6 @@ class ControlNode:
 
         pid = subprocess.Popen([sys.executable, "authSub.py", str(authPrimary_ip), str(authPrimary_port)],
                                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NEW_CONSOLE).pid
-        # sys.exit()
 
     def handle_subFdn_creation(self, fdnPrimary_ip, fdnPrimary_port, delay):
 
@@ -151,10 +146,6 @@ class ControlNode:
 
         pid = subprocess.Popen([sys.executable, "fdnSub.py", str(fdnPrimary_ip), str(fdnPrimary_port)],
                                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NEW_CONSOLE).pid
-
-        # sys.exit()
-
-########################################################################################################################
 
 
 if __name__ == '__main__':

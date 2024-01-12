@@ -1,11 +1,8 @@
 import socket
 import json
-import subprocess
-import base64
 import threading
 import argparse
 import os
-import sys
 import time
 import random
 import hashlib
@@ -96,16 +93,12 @@ class FdnPrimary:
 
                 file = 0
 
-                # audio_file_size_list = []
-                # audio_file_data_list = []
-
                 while file < self.number_of_files:
                     audio_file_size_data = sock.recv(8)
                     audio_file_size = int.from_bytes(audio_file_size_data, byteorder='big')
                     print(f"Audio File size: {audio_file_size}")
 
                     mp3_data = b''
-                    mp3_data_encoded = ''
                     while len(mp3_data) < audio_file_size:
                         chunk = sock.recv(min(4096, audio_file_size - len(mp3_data)))
                         if not chunk:
@@ -127,42 +120,6 @@ class FdnPrimary:
 
                 # Generate the fdnSubs
                 self.generate_fdn_subs()
-
-            # # HANDLE THE DATA IT WILL RECEIVE FROM THE BOOTSTRAP SERVER
-            # if sock.recv(1024).decode() == "Address and Port":
-            #     sock.sendall(self.host.encode())
-            #     print(f"Sent fdnPrimary ip: {self.host}")
-            #     sock.sendall(self.port.to_bytes(8, byteorder='big'))
-            #     print(f"Sent fdnPrimary port: {self.port}")
-
-            # number_of_files = int.from_bytes(sock.recv(8), byteorder='big')
-            # print(f"Expected number of audio files: {number_of_files}")
-            #
-            # file = 0
-            #
-            # audio_file_size_list = []
-            # audio_file_data_list = []
-            #
-            # while file < number_of_files:
-            #     audio_file_size_data = sock.recv(8)
-            #     audio_file_size = int.from_bytes(audio_file_size_data, byteorder='big')
-            #     print(f"Audio File size: {audio_file_size}")
-            #
-            #     mp3_data = b''
-            #     mp3_data_encoded = ''
-            #     while len(mp3_data) < audio_file_size:
-            #         chunk = sock.recv(min(4096, audio_file_size - len(mp3_data)))
-            #         if not chunk:
-            #             break
-            #         mp3_data += chunk
-            #
-            #     audio_file_size_list.append(audio_file_size)
-            #     print(audio_file_size_list)
-            #     audio_file_data_list.append(mp3_data)
-            #     print(f"File {file} received")
-            #     file += 1
-
-            # threading.Thread(target=self.accept_client_connection).start()
 
     def generate_fdn_subs(self):
         num_generated = 0
@@ -361,7 +318,4 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     new_FdnPrimary = FdnPrimary(name="fdnPrimary")
-
-    # Connect the client to the Bootstrap Server
-    # bootstrap_ip = open('bootstrap_ip.txt', 'r').read().strip()
     new_FdnPrimary.connect_to_bootstrap(args.ip, args.port)

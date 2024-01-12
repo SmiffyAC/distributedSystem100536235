@@ -4,8 +4,6 @@ import subprocess
 import base64
 import threading
 import argparse
-import os
-import sys
 import time
 
 
@@ -32,10 +30,6 @@ class FdnSub:
         self.md5_hash_list = []
 
         print(f"FdnSub set up on: {self.host}, Node Port: {self.port}")
-
-        # COMMENTED OUT FOR TESTING
-        # print(f"IN INIT - Starting thread for handle_client_connection")
-        # threading.Thread(target=self.handle_client_connection).start()
 
     def find_open_port(self):
         # Iterate through the port range to find the first open port
@@ -74,16 +68,12 @@ class FdnSub:
 
             file = 0
 
-            audio_file_size_list = []
-            audio_file_data_list = []
-
             while file < self.number_of_files:
                 audio_file_size_data = sock.recv(8)
                 audio_file_size = int.from_bytes(audio_file_size_data, byteorder='big')
                 print(f"Audio File size: {audio_file_size}")
 
                 mp3_data = b''
-                mp3_data_encoded = ''
                 while len(mp3_data) < audio_file_size:
                     chunk = sock.recv(min(4096, audio_file_size - len(mp3_data)))
                     if not chunk:
@@ -113,8 +103,6 @@ class FdnSub:
                 fdn_primary_port = int.from_bytes(sock.recv(8), byteorder='big')
                 print(f"Received fdnPrimary port: {fdn_primary_port}")
 
-            # threading.Thread(target=self.connect_to_authPrimary).start()
-            # self.connect_to_authPrimary(auth_primary_ip, auth_primary_port)
             threading.Thread(target=self.connect_to_fdnPrimary, args=(fdn_primary_ip, fdn_primary_port)).start()
 
     def connect_to_fdnPrimary(self, fdn_primary_ip, fdn_primary_port):
@@ -139,8 +127,6 @@ class FdnSub:
                 s.sendall(fdnSub_port.to_bytes(8, byteorder='big'))
                 print(f"Sent FdnSub port: {self.port}")
 
-            # fdnPrimary_message_2 = s.recv(1024).decode()
-
             # Receive the audio files from the Fdn Primary
 
             self.number_of_files = int.from_bytes(s.recv(8), byteorder='big')
@@ -158,16 +144,12 @@ class FdnSub:
 
             file = 0
 
-            audio_file_size_list = []
-            audio_file_data_list = []
-
             while file < self.number_of_files:
                 audio_file_size_data = s.recv(8)
                 audio_file_size = int.from_bytes(audio_file_size_data, byteorder='big')
                 print(f"Audio File size: {audio_file_size}")
 
                 mp3_data = b''
-                mp3_data_encoded = ''
                 while len(mp3_data) < audio_file_size:
                     chunk = s.recv(min(4096, audio_file_size - len(mp3_data)))
                     if not chunk:
@@ -185,16 +167,10 @@ class FdnSub:
                 s.sendall(b"File received")
                 file += 1
 
-            # s.sendall(b"All files Received")
-
             fdnPrimary_message_2 = s.recv(1024).decode()
 
             if fdnPrimary_message_2 == "Start heartbeat":
                 self.send_heartbeat_to_fdnPrimary(s)
-
-                # threading.Thread(target=self.send_heartbeat_to_authPrimary, args=(s,)).start()
-                # self.handle_client_connection()
-                # threading.Thread(target=self.handle_client_connection).start()
 
     def send_heartbeat_to_fdnPrimary(self, s):
         print(f"IN SEND_HEARTBEAT_TO_FDNPRIMARY - Sending heartbeat to Fdn Primary")
@@ -208,8 +184,6 @@ class FdnSub:
             heartbeat = json.dumps(heartbeatList)
             print(f"Heartbeat Sent: {heartbeat}")
             s.sendall(heartbeat.encode())
-            # s.sendall(b"heartbeat")
-            # print(f"Sent heartbeat to Fdn Primary")
             time.sleep(10)
 
 
@@ -278,9 +252,6 @@ class FdnSub:
                     print(f"Number of connected clients change to: {self.numOfConnectedClients}")
                     print("** Connection with client closed. **\n")
 
-                # except Exception as e:
-                #     print(f"An error occurred: {e}")
-
                 finally:
                     node.close()
 
@@ -328,10 +299,5 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     new_FdnSub = FdnSub(name="fdnSub")
-
-    # Connect the client to the Bootstrap Server
-    # bootstrap_ip = open('bootstrap_ip.txt', 'r').read().strip()
-    # new_FdnSub.connect_to_bootstrap(bootstrap_ip, 50000)
-
     threading.Thread(target=new_FdnSub.handle_client_connection).start()
     new_FdnSub.connect_to_fdnPrimary(args.ip, args.port)

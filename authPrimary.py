@@ -1,11 +1,7 @@
 import socket
 import json
-import subprocess
-import base64
 import threading
 import argparse
-import os
-import sys
 import time
 import random
 
@@ -133,8 +129,6 @@ class AuthPrimary:
         self.numOfAuthSubs += 1
         print(f"Number of authSubs: {self.numOfAuthSubs}")
 
-        # print("Waiting for second authSub to connect")
-
         while True:
             try:
                 if self.numOfAuthSubs == 2:
@@ -157,16 +151,6 @@ class AuthPrimary:
         sock.sendall(b"Start heartbeat")
         # self.handle_authSub_heartbeat(sock, addr)
         threading.Thread(target=self.handle_authSub_heartbeat, args=(sock, addr)).start()
-
-
-        # print(f"\n")
-        # print(addr[0])
-        # print(addr[1])
-        # print(self.authSub_list[0][0])  # ip
-        # print(self.authSub_list[0][1])  # port
-
-
-        # threading.Thread(target=self.handle_authSub_heartbeat, args=(sock,)).start()
 
     def handle_authSub_heartbeat(self, sock, addr):
         while True:
@@ -198,26 +182,9 @@ class AuthPrimary:
                 print("No new subAuth with lowest number of clients")
 
 
-            # if hb_authsub_ip == self.authSub1_ip and hb_authsub_port == self.authSub1_port:
-            #     self.authSub1_numOfConnectedClients = hb_numofconnectedclients
-            #
-            # elif hb_authsub_ip == self.authSub2_ip and hb_authsub_port == self.authSub2_port:
-            #     self.authSub2_numOfConnectedClients = hb_numofconnectedclients
             time.sleep(5)
 
     def handle_client_connection(self, sock):
-
-        # Add account functionality
-        # Receive the client's username and password
-        # username = sock.recv(1024).decode()
-        # print(f"Received username: {username}")
-        # password = sock.recv(1024).decode()
-        # print(f"Received password: {password}")
-
-        # Check if the username already exists
-        # If it does, send a message to the client saying that the username already exists
-        # If it doesn't, add the username and password to the file
-        # Send a message to the client saying that the account was created successfully
 
         client_logins_file = 'clientLogins.txt'
         while True:
@@ -264,15 +231,6 @@ class AuthPrimary:
             print(f"authSub_ip_to_send: {authsub_ip_to_send}")
             authsub_port_to_send = self.subAuthWithLowestNumOfClients_port
             print(f"authSub_port_to_send: {authsub_port_to_send}")
-            #
-            # if self.authSub1_numOfConnectedClients <= self.authSub2_numOfConnectedClients:
-            #     print(f"authSub1 has less clients than authSub2")
-            #     authsub_ip_to_send = self.authSub1_ip
-            #     authsub_port_to_send = self.authSub1_port
-            # elif self.authSub1_numOfConnectedClients > self.authSub2_numOfConnectedClients:
-            #     print(f"authSub2 has less clients than authSub1")
-            #     authsub_ip_to_send = self.authSub2_ip
-            #     authsub_port_to_send = self.authSub2_port
 
             # Send the ip and port to the authSub
             sock.sendall(authsub_ip_to_send.encode())
@@ -290,7 +248,4 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     new_AuthPrimary = AuthPrimary(name="authPrimary")
-
-    # Connect the client to the Bootstrap Server
-    # bootstrap_ip = open('bootstrap_ip.txt', 'r').read().strip()
     new_AuthPrimary.connect_to_bootstrap(args.ip, args.port)

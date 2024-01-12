@@ -1,8 +1,6 @@
 import socket
 import json
-import subprocess
 import pygame
-import base64
 import hashlib
 
 
@@ -211,7 +209,6 @@ class Client:
                         print(f"Audio File size: {audio_file_size}")
 
                         mp3_data = b''
-                        mp3_data_encoded = ''
                         while len(mp3_data) < audio_file_size:
                             chunk = s.recv(min(4096, audio_file_size - len(mp3_data)))
                             if not chunk:
@@ -278,19 +275,6 @@ class Client:
                     print("** UNPAUSED **")
                 elif client_input == 'q':
                     running = False
-
-            # for event in pygame.event.get():
-            #     if event.type == pygame.KEYDOWN:
-            #         if event.key == pygame.K_SPACE:
-            #             # Toggle pause
-            #             if paused:
-            #                 pygame.mixer.music.unpause()
-            #                 paused = False
-            #             else:
-            #                 pygame.mixer.music.pause()
-            #                 paused = True
-            #     elif event.type == pygame.QUIT:
-            #         running = False
 
         print("\n** Song finished playing **\n")
 
