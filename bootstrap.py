@@ -63,11 +63,11 @@ class BootstrapServer:
                 self.last_control_node_time = time.time()
                 threading.Thread(target=self.check_startup).start()
 
-            elif node_info['name'] == 'node':
-                print(f"\nNode connected with info: {node_info}")
-                print(f"Node connected from: {addr}\n")
-                self.connected_nodes.append(node)
-                self.handle_node(node, node_info, addr)
+            # elif node_info['name'] == 'node':
+            #     print(f"\nNode connected with info: {node_info}")
+            #     print(f"Node connected from: {addr}\n")
+            #     self.connected_nodes.append(node)
+            #     self.handle_node(node, node_info, addr)
 
             elif node_info['name'] == 'authPrimary':
                 print(f"\nAuth Primary connected with info: {node_info}")
@@ -79,10 +79,10 @@ class BootstrapServer:
                 print(f"Fdn Primary connected from: {addr}\n")
                 self.handle_fdn_primary(node, node_info)
 
-            elif node_info['name'] == 'authSub':
-                print(f"\nSub Auth connected with info: {node_info}")
-                print(f"Sub Auth connected from: {addr}\n")
-                self.handle_sub_auth(node, node_info)
+            # elif node_info['name'] == 'authSub':
+            #     print(f"\nSub Auth connected with info: {node_info}")
+            #     print(f"Sub Auth connected from: {addr}\n")
+            #     self.handle_sub_auth(node, node_info)
 
             elif node_info['name'] == 'fdnSub':
                 print(f"\nSub Fdn connected with info: {node_info}")
@@ -246,31 +246,31 @@ class BootstrapServer:
 
         # ADD STUFF ABOUT HEARTBEAT FOR KILLING NODES
 
-    def handle_sub_auth(self, sock, node_info):
-        print(f"IN HANDLE SUB AUTH")
-
-        print(f"Connected subAuth info: {node_info['ip'], node_info['port']}")
-
-        # Generate a name for the subAuth node based on the number of subAuth nodes
-        authsub_name = "authSub" + str(len(self.subAuthNodes) + 1)
-
-        self.subAuthNodes.append({"name": authsub_name, "ip": node_info['ip'], "port": node_info['port']})
-        print(f"Sub Auth Nodes List: {self.subAuthNodes}")
-
-        sock.sendall(b"Ready to provide authPrimary address")
-
-        message = sock.recv(1024).decode()
-        print(f"Received message: {message}")
-
-        if message == 'authPrimary address':
-            # print(f"Received message: {message}")
-            sock.sendall(self.auth_primary_node_ip.encode('utf-8'))
-            print(f"Sent authPrimary address: {self.auth_primary_node_ip}")
-            sock.sendall(self.auth_primary_node_port.to_bytes(8, byteorder='big'))
-            print(f"Sent authPrimary port: {self.auth_primary_node_port}")
-
-            self.numOfAuthSubs += 1
-            print(f"NEW Number of subAuth nodes: {self.numOfAuthSubs}")
+    # def handle_sub_auth(self, sock, node_info):
+    #     print(f"IN HANDLE SUB AUTH")
+    #
+    #     print(f"Connected subAuth info: {node_info['ip'], node_info['port']}")
+    #
+    #     # Generate a name for the subAuth node based on the number of subAuth nodes
+    #     authsub_name = "authSub" + str(len(self.subAuthNodes) + 1)
+    #
+    #     self.subAuthNodes.append({"name": authsub_name, "ip": node_info['ip'], "port": node_info['port']})
+    #     print(f"Sub Auth Nodes List: {self.subAuthNodes}")
+    #
+    #     sock.sendall(b"Ready to provide authPrimary address")
+    #
+    #     message = sock.recv(1024).decode()
+    #     print(f"Received message: {message}")
+    #
+    #     if message == 'authPrimary address':
+    #         # print(f"Received message: {message}")
+    #         sock.sendall(self.auth_primary_node_ip.encode('utf-8'))
+    #         print(f"Sent authPrimary address: {self.auth_primary_node_ip}")
+    #         sock.sendall(self.auth_primary_node_port.to_bytes(8, byteorder='big'))
+    #         print(f"Sent authPrimary port: {self.auth_primary_node_port}")
+    #
+    #         self.numOfAuthSubs += 1
+    #         print(f"NEW Number of subAuth nodes: {self.numOfAuthSubs}")
 
     def handle_sub_fdn(self, sock, node_info):
         print(f"IN HANDLE SUB FDN")

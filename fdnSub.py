@@ -3,7 +3,7 @@ import json
 import subprocess
 import base64
 import threading
-
+import argparse
 import os
 import sys
 import time
@@ -35,7 +35,7 @@ class FdnSub:
 
         # COMMENTED OUT FOR TESTING
         # print(f"IN INIT - Starting thread for handle_client_connection")
-        threading.Thread(target=self.handle_client_connection).start()
+        # threading.Thread(target=self.handle_client_connection).start()
 
     def find_open_port(self):
         # Iterate through the port range to find the first open port
@@ -132,9 +132,11 @@ class FdnSub:
 
             # Provide the authPrimary with the address and port of the authSub
             if fdnPrimary_message == "Address and Port":
-                s.sendall(self.host.encode())
+                fdnSub_ip = self.host
+                s.sendall(fdnSub_ip.encode())
                 print(f"Sent FdnSub address: {self.host}")
-                s.sendall(self.port.to_bytes(8, byteorder='big'))
+                fdnSub_port = self.port
+                s.sendall(fdnSub_port.to_bytes(8, byteorder='big'))
                 print(f"Sent FdnSub port: {self.port}")
 
             fdnPrimary_message_2 = s.recv(1024).decode()
@@ -162,6 +164,7 @@ class FdnSub:
             # print(f"Sent heartbeat to Fdn Primary")
             time.sleep(10)
 
+
     def handle_client_connection(self):
         print(f"IN HANDLE_CLIENT_CONNECTION - Inside thread for handle_client_connection")
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
@@ -174,7 +177,6 @@ class FdnSub:
 
                 try:
                     connection_message = node.recv(1024).decode()
-                    print(f"Received connection message: {connection_message}")
                     if connection_message == 'client':
                         print(f"Accepted connection from client with info: {addr}")
                         self.numOfConnectedClients += 1
@@ -270,8 +272,18 @@ class FdnSub:
 
 
 if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser(description="Run AuthSub")
+    parser.add_argument("ip", type=str, help="IP address to use")
+    parser.add_argument("port", type=int, help="Port number to use")
+
+    args = parser.parse_args()
+
     new_FdnSub = FdnSub(name="fdnSub")
 
     # Connect the client to the Bootstrap Server
-    bootstrap_ip = open('bootstrap_ip.txt', 'r').read().strip()
-    new_FdnSub.connect_to_bootstrap(bootstrap_ip, 50000)
+    # bootstrap_ip = open('bootstrap_ip.txt', 'r').read().strip()
+    # new_FdnSub.connect_to_bootstrap(bootstrap_ip, 50000)
+
+    threading.Thread(target=new_FdnSub.handle_client_connection).start()
+    new_FdnSub.connect_to_fdnPrimary(args.ip, args.port)

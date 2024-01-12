@@ -50,7 +50,12 @@ class ControlNode:
                     threading.Thread(target=self.handle_subAuth_creation, args=(authPrimary_ip, authPrimary_port, 0)).start()
                 elif initial_message == "fdnSub":
                     print(f"Received connection from {addr} asking to start an fdnSub")
-                    threading.Thread(target=self.handle_subFdn_creation, args=(node, addr)).start()
+                    node.sendall(b"Address and Port")
+                    fdnPrimary_ip = node.recv(1024).decode()
+                    print(f"Received fdnPrimary address: {fdnPrimary_ip}")
+                    fdnPrimary_port = int.from_bytes(node.recv(8), byteorder='big')
+                    print(f"Received fdnPrimary port: {fdnPrimary_port}")
+                    threading.Thread(target=self.handle_subFdn_creation, args=(fdnPrimary_ip, fdnPrimary_port, 0)).start()
                 else:
                     node.close()
 
@@ -137,16 +142,17 @@ class ControlNode:
                                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NEW_CONSOLE).pid
         # sys.exit()
 
-    def handle_subFdn_creation(self, delay):
+    def handle_subFdn_creation(self, fdnPrimary_ip, fdnPrimary_port, delay):
 
         # Delay
         time.sleep(delay)
 
         print(f"Starting fdnSub.py")
 
-        pid = subprocess.Popen([sys.executable, "fdnSub.py"],
+        pid = subprocess.Popen([sys.executable, "fdnSub.py", str(fdnPrimary_ip), str(fdnPrimary_port)],
                                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NEW_CONSOLE).pid
-        sys.exit()
+
+        # sys.exit()
 
 ########################################################################################################################
 

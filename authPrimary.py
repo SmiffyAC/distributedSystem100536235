@@ -142,10 +142,6 @@ class AuthPrimary:
                     sock.sendall(b"Address and Port")
                     print(f"Asked subAuth for address and port - NUMOFSUBAUTHS = {self.numOfAuthSubs}")
 
-                    # address_message = sock.recv(1024).decode()
-                    # print(f"\nReceived message: {address_message}\n")
-                    #
-                    # if address_message == "Address":
                     self.authSub_ip = sock.recv(1024).decode()
                     print(f"Received authSub address: {self.authSub_ip}")
                     self.authSub_port = int.from_bytes(sock.recv(8), byteorder='big')

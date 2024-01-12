@@ -7,6 +7,7 @@ import argparse
 import os
 import sys
 import time
+import random
 
 
 class FdnPrimary:
@@ -69,6 +70,9 @@ class FdnPrimary:
                 self.control_node_ports = json.loads(sock.recv(1024).decode())
                 print(f"Received controlNode ports: {self.control_node_ports}")
 
+                # Generate the fdnSubs
+                self.generate_fdn_subs()
+
             # # HANDLE THE DATA IT WILL RECEIVE FROM THE BOOTSTRAP SERVER
             # if sock.recv(1024).decode() == "Address and Port":
             #     sock.sendall(self.host.encode())
@@ -105,8 +109,31 @@ class FdnPrimary:
 
             # threading.Thread(target=self.accept_client_connection).start()
 
-    def connect_to_control_node(self):
-        pass
+    def generate_fdn_subs(self):
+        num_generated = 0
+        while num_generated < 2:
+            random_control_node_index = random.randint(0, len(self.control_node_ips) - 1)
+            control_node_ip = self.control_node_ips[random_control_node_index]
+            print(f"random_control_node_ip: {control_node_ip}")
+            control_node_port = self.control_node_ports[random_control_node_index]
+            print(f"random_control_node_port: {control_node_port}")
+
+            # Create the fdnSub
+            threading.Thread(target=self.connect_to_control_node, args=(control_node_ip, control_node_port)).start()
+            num_generated += 1
+            time.sleep(0.5)
+
+    def connect_to_control_node(self, control_node_ip, control_node_port):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.connect((control_node_ip, control_node_port))
+
+            sock.send(b"fdnSub")
+
+            if sock.recv(1024).decode() == "Address and Port":
+                sock.sendall(self.host.encode())
+                print(f"Sent FdnPrimary address: {self.host}")
+                sock.sendall(self.port.to_bytes(8, byteorder='big'))
+                print(f"Sent FdnPrimary port: {self.port}")
 
     def accept_client_connection(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
@@ -121,6 +148,7 @@ class FdnPrimary:
                 connection_message = node.recv(1024).decode()
 
                 if connection_message == 'fdnSub':
+                    time.sleep(0.5)
                     threading.Thread(target=self.handle_fdnSub_connection, args=(node, addr)).start()
 
                 elif connection_message == 'client':
@@ -139,22 +167,22 @@ class FdnPrimary:
                 if self.numOfFdnSubs == 2:
                     # Receive the fdnSub address and port
                     sock.sendall(b"Address and Port")
-                    print(f"Asked subFdn for address and port")
+                    print(f"Asked subAuth for address and port - NUMOFSUBFDNS = {self.numOfFdnSubs}")
 
-                    address_message = sock.recv(1024).decode()
-
-                    if address_message == "Address":
-                        self.fdnSub_ip = sock.recv(1024).decode()
-                        print(f"Received fdnSub address: {self.fdnSub_ip}")
+                    self.fdnSub_ip = sock.recv(1024).decode()
+                    print(f"Received fdnSub address: {self.fdnSub_ip}")
                     self.fdnSub_port = int.from_bytes(sock.recv(8), byteorder='big')
                     print(f"Received fdnSub port: {self.fdnSub_port}")
                     break
+                else:
+                    print(f"Waiting for second fdnSub to connect - NUMOFSUBFDNS = {self.numOfFdnSubs}")
+                    time.sleep(1)
             except:
                 pass
 
         # Tell subFdns to start sending heartbeats
         sock.sendall(b"Start heartbeat")
-        self.handle_fdnSub_heartbeat(sock, addr)
+        threading.Thread(target=self.handle_fdnSub_heartbeat, args=(sock, addr)).start()
 
     def handle_fdnSub_heartbeat(self, sock, addr):
         while True:
