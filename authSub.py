@@ -117,14 +117,15 @@ class AuthSub:
 
             while True:
                 node, addr = sock.accept()
-                print(f"Accepted connection from client with info: {addr}")
 
                 connection_message = node.recv(1024).decode()
 
                 if connection_message == 'client':
+                    print(f"Accepted connection from client with info: {addr}")
                     threading.Thread(target=self.handle_client_connection, args=(node, addr)).start()
 
                 elif connection_message == 'fdnSub':
+                    print(f"Accepted connection from client with info: {addr}")
                     threading.Thread(target=self.handle_fdnSub_connection, args=(node, addr)).start()
 
     def handle_client_connection(self, node, addr):

@@ -210,6 +210,9 @@ class BootstrapServer:
 
     def handle_auth_primary(self, sock, node_info):
 
+        self.auth_primary_node_ip = node_info['ip']
+        self.auth_primary_node_port = node_info['port']
+
         sock.sendall(b"Ready to provide controlNode list")
         print("Sent Ready to provide controlNode list message")
         # Send the list of control node ips
@@ -232,6 +235,9 @@ class BootstrapServer:
 
     def handle_fdn_primary(self, sock, node_info):
         print(f"In handle_fdn_primary")
+
+        self.fdn_primary_node_ip = node_info['ip']
+        self.fdn_primary_node_port = node_info['port']
 
         sock.sendall(b"Ready to provide controlNode list")
         print("Sent Ready to provide controlNode list message")

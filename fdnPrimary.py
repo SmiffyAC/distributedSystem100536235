@@ -8,6 +8,7 @@ import os
 import sys
 import time
 import random
+import hashlib
 
 
 class FdnPrimary:
@@ -175,7 +176,7 @@ class FdnPrimary:
             # Create the fdnSub
             threading.Thread(target=self.connect_to_control_node, args=(control_node_ip, control_node_port)).start()
             num_generated += 1
-            time.sleep(0.5)
+            time.sleep(1)
 
     def connect_to_control_node(self, control_node_ip, control_node_port):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
@@ -227,6 +228,51 @@ class FdnPrimary:
                     print(f"Received fdnSub address: {self.fdnSub_ip}")
                     self.fdnSub_port = int.from_bytes(sock.recv(8), byteorder='big')
                     print(f"Received fdnSub port: {self.fdnSub_port}")
+
+                    # ADD STUFF FOR SENDING THE AUDIO FILES
+
+                    # Get list of all files in the 'audio_files' folder
+                    all_files = os.listdir('audio_files/using')
+
+                    # Filter out only audio files, assuming .mp3 extension
+                    audio_file_paths = [file for file in all_files if file.endswith('.mp3')]
+
+                    print(f"Audio file paths: {audio_file_paths}")
+
+                    # Send the number of files to expect
+                    number_of_files = len(audio_file_paths)
+                    number_of_files = len(self.json_audio_file_list)
+                    print(f"Number of audio files to send: {number_of_files}")
+
+                    # Tell node how many files to expect
+                    sock.sendall(number_of_files.to_bytes(8, byteorder='big'))
+
+                    # Send the list of audio files to chose from
+                    audio_file_list = json.dumps(audio_file_paths)
+                    print(f"JSON audio file list: {audio_file_list}")
+                    print(f"JSON audio file list ENCODED: {self.audio_file_list.encode()}")
+                    sock.sendall(audio_file_list.encode())
+
+                    authsub_message = sock.recv(1024).decode()
+                    if authsub_message == "Ready to receive audio files":
+                        file_index = 0
+
+                        while file_index < number_of_files:
+                            print(audio_file_paths[file_index])
+                            with open("audio_files/using/" + audio_file_paths[file_index], 'rb') as file:
+                                mp3_file_content = b''
+                                mp3_file_content = file.read()
+                                md5_hash = hashlib.md5(mp3_file_content).hexdigest()
+
+                            sock.sendall(len(mp3_file_content).to_bytes(8, byteorder='big'))
+                            print(f"Sent file size: {len(mp3_file_content)}")
+                            sock.sendall(mp3_file_content)
+                            sock.sendall(md5_hash.encode())
+
+                            fdnsub_message = sock.recv(1024).decode()
+                            if fdnsub_message == "File received":
+                                print(f"fdnSub: File {file_index} received")
+                                file_index += 1
                     break
                 else:
                     print(f"Waiting for second fdnSub to connect - NUMOFSUBFDNS = {self.numOfFdnSubs}")

@@ -139,6 +139,54 @@ class FdnSub:
                 s.sendall(fdnSub_port.to_bytes(8, byteorder='big'))
                 print(f"Sent FdnSub port: {self.port}")
 
+            # fdnPrimary_message_2 = s.recv(1024).decode()
+
+            # Receive the audio files from the Fdn Primary
+
+            self.number_of_files = int.from_bytes(s.recv(8), byteorder='big')
+            print(f"Expected number of audio files: {self.number_of_files}")
+
+            audio_file_list = s.recv(1024).decode()
+            print(f"Received audio file list: {audio_file_list}")
+            self.audio_file_list = audio_file_list
+            print(f"FROM FDNPRIMARY - Audio file list: {self.audio_file_list}")
+            self.json_audio_file_list = json.loads(audio_file_list)
+            print(f"FROM FDNPRIMARY - JSON audio file list: {self.json_audio_file_list}")
+
+            s.sendall(b"Ready to receive audio files")
+            print(f"Sent ready to receive audio files message")
+
+            file = 0
+
+            audio_file_size_list = []
+            audio_file_data_list = []
+
+            while file < self.number_of_files:
+                audio_file_size_data = s.recv(8)
+                audio_file_size = int.from_bytes(audio_file_size_data, byteorder='big')
+                print(f"Audio File size: {audio_file_size}")
+
+                mp3_data = b''
+                mp3_data_encoded = ''
+                while len(mp3_data) < audio_file_size:
+                    chunk = s.recv(min(4096, audio_file_size - len(mp3_data)))
+                    if not chunk:
+                        break
+                    mp3_data += chunk
+
+                self.audio_file_size_list.append(audio_file_size)
+                print(self.audio_file_size_list)
+                self.audio_file_data_list.append(mp3_data)
+                md5_hash = s.recv(1024)
+                print(md5_hash)
+                self.md5_hash_list.append(md5_hash)
+                print(f"MD5_hash_list: {self.md5_hash_list}")
+                print(f"File {file} received")
+                s.sendall(b"File received")
+                file += 1
+
+            # s.sendall(b"All files Received")
+
             fdnPrimary_message_2 = s.recv(1024).decode()
 
             if fdnPrimary_message_2 == "Start heartbeat":
