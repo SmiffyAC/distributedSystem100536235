@@ -129,65 +129,95 @@ class FdnSub:
             while True:
                 node, addr = sock.accept()
 
-                try:
-                    connection_message = node.recv(1024).decode()
-                    if connection_message == 'client':
-                        print(f"Accepted connection from client with info: {addr}")
-                        self.numOfConnectedClients += 1
+                connection_message = node.recv(1024).decode()
+                if connection_message == 'client':
+                    print(f"Accepted connection from client with info: {addr}")
+                    self.numOfConnectedClients += 1
+                    client_request_thread = threading.Thread(target=self.handle_client_request, args=(node, addr))
+                    client_request_thread.daemon = True
+                    client_request_thread.start()
+                else:
+                    node.close()
 
-                        # Ask for token
-                        node.sendall(b"Please provide token")
+                # try:
+                #     connection_message = node.recv(1024).decode()
+                #     if connection_message == 'client':
+                #         print(f"Accepted connection from client with info: {addr}")
+                #         self.numOfConnectedClients += 1
+                #
+                #         threading.Thread(target=self.handle_client_request, args=(node, addr)).start()
+                #
+                #
+                #     else:
+                #         node.close()
 
-                        client_token = node.recv(1024).decode()
+                # except socket.error:
+                #     print("\n** Client disconnected unexpectedly. **")
+                #     self.numOfConnectedClients -= 1
+                #     print(f"Number of connected clients change to: {self.numOfConnectedClients}")
+                #     print("** Connection with client closed. **\n")
+                # except Exception as e:
+                #     print(f"An unexpected error occurred: {e}")
+                #
+                # finally:
+                #     node.close()
 
-                        if self.check_token(client_token):
-                            node.sendall(b"Ready to provide songs")
+    def handle_client_request(self, node, addr):
+        while True:
+            try:
+                # Ask for token
+                node.sendall(b"Please provide token")
 
-                            client_message = node.recv(1024).decode()
-                            print(f"Received message from client: {client_message}")
+                client_token = node.recv(1024).decode()
 
-                            if client_message == 'song list':
-                                audio_file_paths = self.audio_file_list
-                                print(f"Audio file paths: {audio_file_paths}")
-                                audio_file_list = json.dumps(audio_file_paths)
-                                print(f"Audio file list: {audio_file_list}")
-                                node.sendall(audio_file_list.encode())
-                                print(f"Sent song list to client: {audio_file_list}")
+                if self.check_token(client_token):
+                    node.sendall(b"Ready to provide songs")
 
-                                song_index = int.from_bytes(node.recv(8), byteorder='big')
-                                print(f"Song index: {song_index}")
+                    client_message = node.recv(1024).decode()
+                    print(f"Received message from client: {client_message}")
 
-                                node.sendall(self.audio_file_size_list[song_index].to_bytes(8, byteorder='big'))
-                                print(f"Sent song size: {self.audio_file_size_list[song_index]}")
-                                node.sendall(self.audio_file_data_list[song_index])
-                                print(f"Sent song data")
-                                node.sendall(self.md5_hash_list[song_index])
-                                print(f"Sent md5 hash {self.md5_hash_list[song_index]}")
+                    if client_message == 'song list':
+                        audio_file_paths = self.audio_file_list
+                        print(f"Audio file paths: {audio_file_paths}")
+                        audio_file_list = json.dumps(audio_file_paths)
+                        print(f"Audio file list: {audio_file_list}")
+                        node.sendall(audio_file_list.encode())
+                        print(f"Sent song list to client: {audio_file_list}")
 
-                                final_message = node.recv(1024).decode()
-                                if final_message == "File received":
-                                    print(f"\n** Client received file - Closing connection with client **\n")
-                                    node.close()
-                                    self.numOfConnectedClients -= 1
-                        else:
-                            node.sendall(b"Invalid token")
-                            print(f"Invalid token")
+                        song_index = int.from_bytes(node.recv(8), byteorder='big')
+                        print(f"Song index: {song_index}")
+
+                        node.sendall(self.audio_file_size_list[song_index].to_bytes(8, byteorder='big'))
+                        print(f"Sent song size: {self.audio_file_size_list[song_index]}")
+                        node.sendall(self.audio_file_data_list[song_index])
+                        print(f"Sent song data")
+                        node.sendall(self.md5_hash_list[song_index])
+                        print(f"Sent md5 hash {self.md5_hash_list[song_index]}")
+
+                        final_message = node.recv(1024).decode()
+                        if final_message == "File received":
+                            print(f"\n** Client received file - Closing connection with client **\n")
                             node.close()
                             self.numOfConnectedClients -= 1
-
-                    else:
-                        node.close()
-
-                except socket.error:
-                    print("\n** Client disconnected unexpectedly. **")
-                    self.numOfConnectedClients -= 1
-                    print(f"Number of connected clients change to: {self.numOfConnectedClients}")
-                    print("** Connection with client closed. **\n")
-                except Exception as e:
-                    print(f"An unexpected error occurred: {e}")
-
-                finally:
+                            break
+                else:
+                    node.sendall(b"Invalid token")
+                    print(f"Invalid token")
                     node.close()
+                    self.numOfConnectedClients -= 1
+
+            except socket.error:
+                print("\n** Client disconnected unexpectedly. **")
+                self.numOfConnectedClients -= 1
+                print(f"Number of connected clients change to: {self.numOfConnectedClients}")
+                print("** Connection with client closed. **\n")
+                node.close()
+                break
+            except Exception as e:
+                print(f"An unexpected error occurred: {e}")
+                node.close()
+            finally:
+                node.close()
 
     def check_token(self, token):
 

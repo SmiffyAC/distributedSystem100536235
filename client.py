@@ -157,6 +157,7 @@ class Client:
             self.connect_to_fdnSub(fdn_sub_ip, fdn_sub_port)
 
     def connect_to_fdnSub(self, fdn_sub_ip, fdn_sub_port):
+        print(f"Connecting to Fdn Sub at {fdn_sub_ip}:{fdn_sub_port}")
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 
             s.connect((fdn_sub_ip, fdn_sub_port))

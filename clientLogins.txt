@@ -10,3 +10,5 @@ lucy,apple
 robin,bird
 chris,derby
 joker,funny
+bruce,cat
+peter,venom

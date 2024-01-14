@@ -281,10 +281,10 @@ class FdnPrimary:
             # Get the number of connected clients
             hb_num_of_connected_clients = int(json_heartbeat[2])
 
-            print(f"\nhb_fdn_sub_ip: {hb_fdn_sub_ip}")
-            print(f"hb_fdn_sub_port: {hb_fdn_sub_port}")
-            print(f"hb_num_of_connected_clients: {hb_num_of_connected_clients}\n")
-            print(f"subFdnWithLowestNumOfClients_numOfConnectedClients: {self.subFdnWithLowestNumOfClients_numOfConnectedClients}")
+            # print(f"\nhb_fdn_sub_ip: {hb_fdn_sub_ip}")
+            # print(f"hb_fdn_sub_port: {hb_fdn_sub_port}")
+            # print(f"hb_num_of_connected_clients: {hb_num_of_connected_clients}\n")
+            # print(f"subFdnWithLowestNumOfClients_numOfConnectedClients: {self.subFdnWithLowestNumOfClients_numOfConnectedClients}")
 
             print(f"Received heartbeat message from {hb_fdn_sub_ip}, {hb_fdn_sub_port}: {json_heartbeat}")
 
