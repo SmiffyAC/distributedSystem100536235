@@ -11,10 +11,12 @@ import hashlib
 class FdnPrimary:
     def __init__(self, name):
         # Initialize the client with a name, host, and port
+        self.fdnSub_port = None
+        self.fdnSub_ip = None
         node_name = socket.gethostname()
         hostname, aliases, ip_addresses = socket.gethostbyname_ex(node_name)
 
-        # Filter for IP addresses that start with '10'
+        # Filter for IP addresses that start with 10
         ip_address_10 = next((ip for ip in ip_addresses if ip.startswith('10')), None)
         self.name = name
         self.host = ip_address_10
@@ -184,8 +186,6 @@ class FdnPrimary:
                     self.fdnSub_port = int.from_bytes(sock.recv(8), byteorder='big')
                     print(f"Received fdnSub port: {self.fdnSub_port}")
 
-                    # ADD STUFF FOR SENDING THE AUDIO FILES
-
                     # Get list of all files in the 'audio_files' folder
                     all_files = os.listdir('audio_files/using')
 
@@ -195,7 +195,6 @@ class FdnPrimary:
                     print(f"Audio file paths: {audio_file_paths}")
 
                     # Send the number of files to expect
-                    number_of_files = len(audio_file_paths)
                     number_of_files = len(self.json_audio_file_list)
                     print(f"Number of audio files to send: {number_of_files}")
 
@@ -213,7 +212,6 @@ class FdnPrimary:
                         while file_index < number_of_files:
                             print(audio_file_paths[file_index])
                             with open("audio_files/using/" + audio_file_paths[file_index], 'rb') as file:
-                                mp3_file_content = b''
                                 mp3_file_content = file.read()
                                 md5_hash = hashlib.md5(mp3_file_content).hexdigest()
 
@@ -222,55 +220,57 @@ class FdnPrimary:
                             sock.sendall(mp3_file_content)
                             sock.sendall(md5_hash.encode())
 
-                            fdnsub_message = sock.recv(1024).decode()
-                            if fdnsub_message == "File received":
+                            fdn_sub_message = sock.recv(1024).decode()
+                            if fdn_sub_message == "File received":
                                 print(f"fdnSub: File {file_index} received")
                                 file_index += 1
                     break
                 else:
                     time.sleep(1)
-            except:
-                pass
+            except socket.error as e:
+                print(f"Socket error occurred: {e}")
+            except Exception as e:
+                print(f"An unexpected error occurred: {e}")
 
         # Tell subFdns to start sending heartbeats
         sock.sendall(b"Start heartbeat")
-        threading.Thread(target=self.handle_fdnSub_heartbeat, args=(sock, addr)).start()
+        threading.Thread(target=self.handle_fdnSub_heartbeat, args=(sock,)).start()
 
-    def handle_fdnSub_heartbeat(self, sock, addr):
+    def handle_fdnSub_heartbeat(self, sock):
         while True:
             heartbeat_message = sock.recv(1024).decode()
 
             json_heartbeat = json.loads(heartbeat_message)
 
             # Get the ip and port of the fdnSub that sent the heartbeat
-            hb_fdnsub_ip = json_heartbeat[0]
-            hb_fdnsub_port = json_heartbeat[1]
+            hb_fdn_sub_ip = json_heartbeat[0]
+            hb_fdn_sub_port = json_heartbeat[1]
             # Get the number of connected clients
-            hb_numofconnectedclients = int(json_heartbeat[2])
+            hb_num_of_connected_clients = int(json_heartbeat[2])
 
-            print(f"\nhb_fdnsub_ip: {hb_fdnsub_ip}")
-            print(f"hb_fdnsub_port: {hb_fdnsub_port}")
-            print(f"hb_numofconnectedclients: {hb_numofconnectedclients}\n")
+            print(f"\nhb_fdn_sub_ip: {hb_fdn_sub_ip}")
+            print(f"hb_fdn_sub_port: {hb_fdn_sub_port}")
+            print(f"hb_num_of_connected_clients: {hb_num_of_connected_clients}\n")
             print(f"subFdnWithLowestNumOfClients_numOfConnectedClients: {self.subFdnWithLowestNumOfClients_numOfConnectedClients}")
 
-            print(f"Received heartbeat message from {hb_fdnsub_ip}, {hb_fdnsub_port}: {json_heartbeat}")
+            print(f"Received heartbeat message from {hb_fdn_sub_ip}, {hb_fdn_sub_port}: {json_heartbeat}")
 
             if self.subFdnWithLowestNumOfClients_ip is None:
-                self.subFdnWithLowestNumOfClients_ip = hb_fdnsub_ip
-                self.subFdnWithLowestNumOfClients_port = hb_fdnsub_port
-                self.subFdnWithLowestNumOfClients_numOfConnectedClients = hb_numofconnectedclients
+                self.subFdnWithLowestNumOfClients_ip = hb_fdn_sub_ip
+                self.subFdnWithLowestNumOfClients_port = hb_fdn_sub_port
+                self.subFdnWithLowestNumOfClients_numOfConnectedClients = hb_num_of_connected_clients
                 print(f"New subFdn with lowest number of clients: {self.subFdnWithLowestNumOfClients_ip}, {self.subFdnWithLowestNumOfClients_port}, {self.subFdnWithLowestNumOfClients_numOfConnectedClients}")
 
-            elif hb_fdnsub_ip == self.subFdnWithLowestNumOfClients_ip and hb_fdnsub_port == self.subFdnWithLowestNumOfClients_port:
-                self.subFdnWithLowestNumOfClients_ip = hb_fdnsub_ip
-                self.subFdnWithLowestNumOfClients_port = hb_fdnsub_port
-                self.subFdnWithLowestNumOfClients_numOfConnectedClients = hb_numofconnectedclients
+            elif hb_fdn_sub_ip == self.subFdnWithLowestNumOfClients_ip and hb_fdn_sub_port == self.subFdnWithLowestNumOfClients_port:
+                self.subFdnWithLowestNumOfClients_ip = hb_fdn_sub_ip
+                self.subFdnWithLowestNumOfClients_port = hb_fdn_sub_port
+                self.subFdnWithLowestNumOfClients_numOfConnectedClients = hb_num_of_connected_clients
                 print(f"Updated values for subFdn with lowest number of clients: {self.subFdnWithLowestNumOfClients_ip}, {self.subFdnWithLowestNumOfClients_port}, {self.subFdnWithLowestNumOfClients_numOfConnectedClients}")
 
-            elif hb_numofconnectedclients < self.subFdnWithLowestNumOfClients_numOfConnectedClients:
-                self.subFdnWithLowestNumOfClients_ip = hb_fdnsub_ip
-                self.subFdnWithLowestNumOfClients_port = hb_fdnsub_port
-                self.subFdnWithLowestNumOfClients_numOfConnectedClients = hb_numofconnectedclients
+            elif hb_num_of_connected_clients < self.subFdnWithLowestNumOfClients_numOfConnectedClients:
+                self.subFdnWithLowestNumOfClients_ip = hb_fdn_sub_ip
+                self.subFdnWithLowestNumOfClients_port = hb_fdn_sub_port
+                self.subFdnWithLowestNumOfClients_numOfConnectedClients = hb_num_of_connected_clients
                 print(f"\n** New subFdn with lowest number of clients: {self.subFdnWithLowestNumOfClients_ip}, {self.subFdnWithLowestNumOfClients_port}, {self.subFdnWithLowestNumOfClients_numOfConnectedClients} **\n")
 
             else:
@@ -285,16 +285,16 @@ class FdnPrimary:
             print(f"Received message from client: {client_message}")
 
             if client_message == "Need fdnSub address":
-                fdnsub_ip_to_send = self.subFdnWithLowestNumOfClients_ip
-                print(f"fdnSub_ip_to_send: {fdnsub_ip_to_send}")
-                fdnsub_port_to_send = self.subFdnWithLowestNumOfClients_port
-                print(f"fdnSub_port_to_send: {fdnsub_port_to_send}")
+                fdn_sub_ip_to_send = self.subFdnWithLowestNumOfClients_ip
+                print(f"fdn_sub_ip_to_send: {fdn_sub_ip_to_send}")
+                fdn_sub_port_to_send = self.subFdnWithLowestNumOfClients_port
+                print(f"fdn_sub_port_to_send: {fdn_sub_port_to_send}")
 
                 # Send the ip and port to the fdnSub
-                sock.sendall(fdnsub_ip_to_send.encode())
-                print(f"Sent fdnSub ip: {fdnsub_ip_to_send}")
-                sock.sendall(fdnsub_port_to_send.to_bytes(8, byteorder='big'))
-                print(f"Sent fdnSub port: {fdnsub_port_to_send}")
+                sock.sendall(fdn_sub_ip_to_send.encode())
+                print(f"Sent fdnSub ip: {fdn_sub_ip_to_send}")
+                sock.sendall(fdn_sub_port_to_send.to_bytes(8, byteorder='big'))
+                print(f"Sent fdnSub port: {fdn_sub_port_to_send}")
 
         except ConnectionResetError:
             print("Client disconnected unexpectedly.")

@@ -1,7 +1,5 @@
 import socket
 import json
-import subprocess
-import base64
 import threading
 import argparse
 import time
@@ -13,7 +11,7 @@ class FdnSub:
         node_name = socket.gethostname()
         hostname, aliases, ip_addresses = socket.gethostbyname_ex(node_name)
 
-        # Filter for IP addresses that start with '10'
+        # Filter for IP addresses that start with 10
         ip_address_10 = next((ip for ip in ip_addresses if ip.startswith('10')), None)
         self.name = name
         self.host = ip_address_10
@@ -107,16 +105,12 @@ class FdnSub:
     def send_heartbeat_to_fdnPrimary(self, s):
         time.sleep(5)
         while True:
-            heartbeatList = []
-            heartbeatList.append(self.host)
-            heartbeatList.append(self.port)
-            heartbeatList.append(self.numOfConnectedClients)
+            heartbeatList = [self.host, self.port, self.numOfConnectedClients]
 
             heartbeat = json.dumps(heartbeatList)
             print(f"Heartbeat Sent: {heartbeat}")
             s.sendall(heartbeat.encode())
             time.sleep(10)
-
 
     def handle_client_connection(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
@@ -176,15 +170,16 @@ class FdnSub:
                     else:
                         node.close()
 
-                except:
+                except socket.error:
                     print("\n** Client disconnected unexpectedly. **")
                     self.numOfConnectedClients -= 1
                     print(f"Number of connected clients change to: {self.numOfConnectedClients}")
                     print("** Connection with client closed. **\n")
+                except Exception as e:
+                    print(f"An unexpected error occurred: {e}")
 
                 finally:
                     node.close()
-
 
     def check_token(self, token):
 
@@ -210,10 +205,10 @@ class FdnSub:
                 print(f"Sent token to authSub: {token}")
 
                 # Receive the response from the authSub
-                authSub_response = sock.recv(1024).decode()
-                print(f"Received response from authSub: {authSub_response}")
+                auth_sub_response = sock.recv(1024).decode()
+                print(f"Received response from authSub: {auth_sub_response}")
 
-                if authSub_response == "Valid token":
+                if auth_sub_response == "Valid token":
                     print(f"\n**TOKEN IS VALID**\n")
                     return True
                 else:

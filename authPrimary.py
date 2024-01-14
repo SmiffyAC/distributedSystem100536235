@@ -11,23 +11,16 @@ class AuthPrimary:
         # Initialize the client with a name, host, and port
         node_name = socket.gethostname()
         hostname, aliases, ip_addresses = socket.gethostbyname_ex(node_name)
-
-        # Filter for IP addresses that start with '10'
+        # Filter for IP addresses that start with 10
         ip_address_10 = next((ip for ip in ip_addresses if ip.startswith('10')), None)
         self.name = name
         self.host = ip_address_10
         self.port = self.find_open_port()
-        self.authSub1_ip = None
-        self.authSub1_port = None
-        self.authSub1_numOfConnectedClients = 0
-        self.authSub2_ip = None
-        self.authSub2_port = None
-        self.authSub2_numOfConnectedClients = 0
-
+        self.authSub_ip = None
+        self.authSub_port = None
         self.subAuthWithLowestNumOfClients_ip = None
         self.subAuthWithLowestNumOfClients_port = None
         self.subAuthWithLowestNumOfClients_numOfConnectedClients = 0
-
         self.authSub_list = []
         self.authSub_file = None
         self.numOfAuthSubs = 0
@@ -87,7 +80,6 @@ class AuthPrimary:
             num_generated += 1
             time.sleep(1)
 
-
     def connect_to_control_node(self, control_node_ip, control_node_port):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             sock.connect((control_node_ip, control_node_port))
@@ -98,8 +90,6 @@ class AuthPrimary:
                 sock.sendall(self.host.encode())
                 sock.sendall(self.port.to_bytes(8, byteorder='big'))
                 print(f"Sent AuthPrimary address {self.host} and port {self.port} to randomly selected control node\n")
-
-
 
     def accept_client_connection(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
@@ -124,7 +114,6 @@ class AuthPrimary:
                     node.close()
 
     def handle_authSub_connection(self, sock, addr):
-
         print(f"\nA new authSub has connected from: {addr}")
         self.numOfAuthSubs += 1
         print(f"Number of authSubs: {self.numOfAuthSubs}")
@@ -142,14 +131,15 @@ class AuthPrimary:
                     break
                 else:
                     time.sleep(1)
-            except:
-                pass
+            except ConnectionResetError:
+                print(f"Connection with {addr} was reset.")
+                break
 
         # Tell subAuths to start sending heartbeats
         sock.sendall(b"Start heartbeat")
-        threading.Thread(target=self.handle_authSub_heartbeat, args=(sock, addr)).start()
+        threading.Thread(target=self.handle_authSub_heartbeat, args=(sock,)).start()
 
-    def handle_authSub_heartbeat(self, sock, addr):
+    def handle_authSub_heartbeat(self, sock):
         print("\n ** Receiving Heartbeats **")
         while True:
             heartbeat_message = sock.recv(1024).decode()
@@ -160,24 +150,23 @@ class AuthPrimary:
             hb_authsub_ip = json_heartbeat[0]
             hb_authsub_port = json_heartbeat[1]
             # Get the number of connected clients
-            hb_numofconnectedclients = json_heartbeat[2]
+            hb_num_of_connected_clients = json_heartbeat[2]
 
             print(f"Received heartbeat message from {hb_authsub_ip}, {hb_authsub_port}: {json_heartbeat}")
 
             if self.subAuthWithLowestNumOfClients_ip is None:
                 self.subAuthWithLowestNumOfClients_ip = hb_authsub_ip
                 self.subAuthWithLowestNumOfClients_port = hb_authsub_port
-                self.subAuthWithLowestNumOfClients_numOfConnectedClients = hb_numofconnectedclients
+                self.subAuthWithLowestNumOfClients_numOfConnectedClients = hb_num_of_connected_clients
                 print(f"New subAuth with lowest number of clients: {self.subAuthWithLowestNumOfClients_ip}, {self.subAuthWithLowestNumOfClients_port}, {self.subAuthWithLowestNumOfClients_numOfConnectedClients}")
 
-            elif hb_numofconnectedclients < self.subAuthWithLowestNumOfClients_numOfConnectedClients:
+            elif hb_num_of_connected_clients < self.subAuthWithLowestNumOfClients_numOfConnectedClients:
                 self.subAuthWithLowestNumOfClients_ip = hb_authsub_ip
                 self.subAuthWithLowestNumOfClients_port = hb_authsub_port
-                self.subAuthWithLowestNumOfClients_numOfConnectedClients = hb_numofconnectedclients
+                self.subAuthWithLowestNumOfClients_numOfConnectedClients = hb_num_of_connected_clients
                 print(f"New subAuth with lowest number of clients: {self.subAuthWithLowestNumOfClients_ip}, {self.subAuthWithLowestNumOfClients_port}, {self.subAuthWithLowestNumOfClients_numOfConnectedClients}")
 
             else:
-                # print("No new subAuth with lowest number of clients")
                 continue
 
 

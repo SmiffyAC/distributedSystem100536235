@@ -10,7 +10,7 @@ class Client:
         node_name = socket.gethostname()
         hostname, aliases, ip_addresses = socket.gethostbyname_ex(node_name)
 
-        # Filter for IP addresses that start with '10'
+        # Filter for IP addresses that start with 10
         ip_address_10 = next((ip for ip in ip_addresses if ip.startswith('10')), None)
         self.name = name
         self.host = ip_address_10
@@ -94,17 +94,17 @@ class Client:
             s.sendall(b"Need authSub address")
 
             # Receive the authSub address
-            authSub_ip = s.recv(1024).decode()
-            print(f"From AuthPrimary: Auth Sub address = {authSub_ip}")
-            authSub_port = int.from_bytes(s.recv(8), byteorder='big')
-            print(f"From AuthPrimary: Auth Sub port = {authSub_port}")
+            auth_sub_ip = s.recv(1024).decode()
+            print(f"From AuthPrimary: Auth Sub address = {auth_sub_ip}")
+            auth_sub_port = int.from_bytes(s.recv(8), byteorder='big')
+            print(f"From AuthPrimary: Auth Sub port = {auth_sub_port}")
 
-            self.connect_to_authSub(authSub_ip, authSub_port)
+            self.connect_to_authSub(auth_sub_ip, auth_sub_port)
 
-    def connect_to_authSub(self, authSub_ip, authSub_port):
+    def connect_to_authSub(self, auth_sub_ip, auth_sub_port):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 
-            s.connect((authSub_ip, authSub_port))
+            s.connect((auth_sub_ip, auth_sub_port))
 
             while True:
                 s.sendall(b"client")
@@ -149,24 +149,24 @@ class Client:
             s.sendall(b"Need fdnSub address")
 
             # Receive the fdnSub address
-            fdnSub_ip = s.recv(1024).decode()
-            print(f"From FdnPrimary: Fdn Sub address = {fdnSub_ip}")
-            fdnSub_port = int.from_bytes(s.recv(8), byteorder='big')
-            print(f"From FdnPrimary: Fdn Sub port = {fdnSub_port}")
+            fdn_sub_ip = s.recv(1024).decode()
+            print(f"From FdnPrimary: Fdn Sub address = {fdn_sub_ip}")
+            fdn_sub_port = int.from_bytes(s.recv(8), byteorder='big')
+            print(f"From FdnPrimary: Fdn Sub port = {fdn_sub_port}")
 
-            self.connect_to_fdnSub(fdnSub_ip, fdnSub_port)
+            self.connect_to_fdnSub(fdn_sub_ip, fdn_sub_port)
 
-    def connect_to_fdnSub(self, fdnSub_ip, fdnSub_port):
+    def connect_to_fdnSub(self, fdn_sub_ip, fdn_sub_port):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 
-            s.connect((fdnSub_ip, fdnSub_port))
+            s.connect((fdn_sub_ip, fdn_sub_port))
 
             while True:
 
                 try:
                     s.sendall(b"client")
 
-                    # FDNSUB will check token and send back a message
+                    # FdnSub will check token and send back a message
                     token_request = s.recv(1024).decode()
 
                     if token_request == "Please provide token":
@@ -266,7 +266,7 @@ class Client:
                 if client_input == ' ':
                     paused = False
                     pygame.mixer.music.unpause()
-                    print("** UNPAUSED **")
+                    print("** PLAYING **")
                 elif client_input == 'q':
                     running = False
 

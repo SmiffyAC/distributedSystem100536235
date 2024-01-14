@@ -10,29 +10,22 @@ class BootstrapServer:
     def __init__(self, port=50000):
         self.host = open('bootstrap_ip.txt', 'r').read().strip()
         self.port = port
-        self.connected_nodes = []  # List to store socket objects of connected nodes
         self.auth_primary_node_ip = None  # Variable to store the authPrimary node IP
         self.auth_primary_node_port = None  # Variable to store the authPrimary port
         self.fdn_primary_node_ip = None  # Variable to store the fdnPrimary node
         self.fdn_primary_node_port = None
-        self.subAuthNodes = []  # List to store the subAuth nodes
-        self.numOfAuthSubs = 0  # Variable to store the number of subAuth nodes
-        self.subFdnNodes = []  # List to store the subFdn nodes
-        self.numofFdnSubs = 0  # Variable to store the number of subFdn nodes
         self.nodes = {}  # Dictionary to store registered nodes
         self.client = None
         self.control_nodes = []  # List to store the control nodes
         self.control_node_ips = []  # List to store the control node IPs
         self.control_node_ports = []  # List to store the control node ports
+        self.last_control_node_time = None  # Variable to store the time of the last control node registration
 
     def start_server(self):
-
         node_name = socket.gethostname()
         hostname, aliases, ip_addresses = socket.gethostbyname_ex(node_name)
-
-        # Filter for IP addresses that start with '10'
+        # Filter for IP addresses that start with 10
         ip_address_10 = next((ip for ip in ip_addresses if ip.startswith('10')), None)
-
         if ip_address_10:
             print(f"IP Address starting with '10': {ip_address_10}")
         else:
@@ -118,41 +111,6 @@ class BootstrapServer:
         self.control_nodes[1].sendall(fdn_instruction.encode('utf-8'))
         print("Sent start_PrimaryFdn")
 
-    def handle_node(self, node, node_info, addr):
-
-        # Tell the first connected node to be authPrimary
-        if len(self.connected_nodes) == 1:
-            print("Length of connected nodes: ")
-            print(len(self.connected_nodes))
-            node.sendall(b"authPrimary")
-            # self.connected_nodes.append(node)  # Store the socket object
-            print(f"Node handling authPrimary creation: {addr}")
-
-        # Tell the second and third connected node to be AuthSub1 (TEMP)
-        elif len(self.connected_nodes) == 2 or len(self.connected_nodes) == 3:
-            node.sendall(b"subAuth")
-            # Send delay
-            delay = len(self.connected_nodes)
-            node.sendall(delay.to_bytes(8, byteorder='big'))
-            # self.connected_nodes.append(node)
-
-
-        # Tell the fourth connected node to be fdnPrimary (TEMP)
-        elif len(self.connected_nodes) == 4:
-            print("Length of connected nodes: ")
-            print(len(self.connected_nodes))
-            node.sendall(b"fdnPrimary")
-            # self.connected_nodes.append(node)  # Store the socket object
-            print(f"Node handling fdnPrimary creation: {node_info['ip']}")
-
-        # Tell the fifth and sixth connected node to be FdnSub1 (TEMP)
-        elif len(self.connected_nodes) == 5 or len(self.connected_nodes) == 6:
-            node.sendall(b"subFdn")
-            # Send delay
-            delay = len(self.connected_nodes)
-            node.sendall(delay.to_bytes(8, byteorder='big'))
-            # self.connected_nodes.append(node)
-
     def handle_auth_primary(self, sock, node_info):
 
         self.auth_primary_node_ip = node_info['ip']
@@ -179,7 +137,6 @@ class BootstrapServer:
         # ADD STUFF ABOUT HEARTBEAT FOR KILLING NODES
 
     def handle_fdn_primary(self, sock, node_info):
-        print(f"In handle_fdn_primary")
 
         self.fdn_primary_node_ip = node_info['ip']
         self.fdn_primary_node_port = node_info['port']
@@ -218,14 +175,13 @@ class BootstrapServer:
         print(f"JSON audio file list ENCODED: {audio_file_list.encode()}")
         sock.sendall(audio_file_list.encode())
 
-        authsub_message = sock.recv(1024).decode()
-        if authsub_message == "Ready to receive audio files":
+        fdn_primary_message = sock.recv(1024).decode()
+        if fdn_primary_message == "Ready to receive audio files":
             file_index = 0
 
             while file_index < number_of_files:
                 print(audio_file_paths[file_index])
                 with open("audio_files/using/" + audio_file_paths[file_index], 'rb') as file:
-                    mp3_file_content = b''
                     mp3_file_content = file.read()
                     md5_hash = hashlib.md5(mp3_file_content).hexdigest()
 
@@ -234,14 +190,14 @@ class BootstrapServer:
                 sock.sendall(mp3_file_content)
                 sock.sendall(md5_hash.encode())
 
-                fdnsub_message = sock.recv(1024).decode()
-                if fdnsub_message == "File received":
-                    print(f"fdnSub: File {file_index} received")
+                fdn_primary_message_2 = sock.recv(1024).decode()
+                if fdn_primary_message_2 == "File received":
+                    print(f"fdnPrimary: File {file_index} received")
                     file_index += 1
 
-            subfdn_message = sock.recv(1024).decode()
+            fdn_primary_message_3 = sock.recv(1024).decode()
 
-            if subfdn_message == "All files Received":
+            if fdn_primary_message_3 == "All files Received":
                 sock.sendall(b"Ready to provide fdnPrimary address")
 
                 message = sock.recv(1024).decode()

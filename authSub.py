@@ -10,8 +10,7 @@ class AuthSub:
         # Initialize the client with a name, host, and port
         node_name = socket.gethostname()
         hostname, aliases, ip_addresses = socket.gethostbyname_ex(node_name)
-
-        # Filter for IP addresses that start with '10'
+        # Filter for IP addresses that start with 10
         ip_address_10 = next((ip for ip in ip_addresses if ip.startswith('10')), None)
         self.name = name
         self.host = ip_address_10
@@ -40,34 +39,30 @@ class AuthSub:
 
             print(f"Connected to Auth Primary at {auth_primary_ip}:{auth_primary_port}")
 
-            authPrimary_message = s.recv(1024).decode()
-            print(f"Received message from Auth Primary: {authPrimary_message}")
+            auth_primary_message = s.recv(1024).decode()
+            print(f"Received message from Auth Primary: {auth_primary_message}")
             # Provide the authPrimary with the address and port of the authSub
-            if authPrimary_message == "Address and Port":
+            if auth_primary_message == "Address and Port":
                 # s.sendall(b"Address")
-                authSub_ip = self.host
-                s.sendall(authSub_ip.encode())
+                auth_sub_ip = self.host
+                s.sendall(auth_sub_ip.encode())
                 print(f"Sent AuthSub address: {self.host}")
-                authSub_port = self.port
-                s.sendall(authSub_port.to_bytes(8, byteorder='big'))
+                auth_sub_port = self.port
+                s.sendall(auth_sub_port.to_bytes(8, byteorder='big'))
                 print(f"Sent AuthSub port: {self.port}")
 
+            auth_primary_message_2 = s.recv(1024).decode()
 
-            authPrimary_message_2 = s.recv(1024).decode()
-
-            if authPrimary_message_2 == "Start heartbeat":
+            if auth_primary_message_2 == "Start heartbeat":
                 print("\n ** Heartbeat started **")
                 self.send_heartbeat_to_authPrimary(s)
 
     def send_heartbeat_to_authPrimary(self, s):
         time.sleep(5)
         while True:
-            heartbeatList = []
-            heartbeatList.append(self.host)
-            heartbeatList.append(self.port)
-            heartbeatList.append(self.numOfConnectedClients)
+            heartbeat_list = [self.host, self.port, self.numOfConnectedClients]
 
-            heartbeat = json.dumps(heartbeatList)
+            heartbeat = json.dumps(heartbeat_list)
             print(f"Heartbeat Sent: {heartbeat}")
             s.sendall(heartbeat.encode())
 
@@ -86,13 +81,13 @@ class AuthSub:
 
                 if connection_message == 'client':
                     print(f"Accepted connection from client with info: {addr}")
-                    threading.Thread(target=self.handle_client_connection, args=(node, addr)).start()
+                    threading.Thread(target=self.handle_client_connection, args=(node,)).start()
 
                 elif connection_message == 'fdnSub':
                     print(f"Accepted connection from client with info: {addr}")
-                    threading.Thread(target=self.handle_fdnSub_connection, args=(node, addr)).start()
+                    threading.Thread(target=self.handle_fdnSub_connection, args=(node,)).start()
 
-    def handle_client_connection(self, node, addr):
+    def handle_client_connection(self, node):
 
         node.sendall(b"Ready to provide token")
 
@@ -108,7 +103,7 @@ class AuthSub:
             self.tokenSet.add(token)
             print(f"Token Set: {self.tokenSet}")
 
-    def handle_fdnSub_connection(self, node, addr):
+    def handle_fdnSub_connection(self, node):
 
         node.sendall(b"Ready to receive token")
 

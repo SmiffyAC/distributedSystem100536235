@@ -12,7 +12,7 @@ class ControlNode:
         node_name = socket.gethostname()
         hostname, aliases, ip_addresses = socket.gethostbyname_ex(node_name)
 
-        # Filter for IP addresses that start with '10'
+        # Filter for IP addresses that start with 10
         ip_address_10 = next((ip for ip in ip_addresses if ip.startswith('10')), None)
         node_name = socket.gethostname()
         node_ip = socket.gethostbyname(node_name)
@@ -47,19 +47,19 @@ class ControlNode:
                 if initial_message == "authSub":
                     print(f"Received connection from {addr} asking to start an authSub")
                     node.sendall(b"Address and Port")
-                    authPrimary_ip = node.recv(1024).decode()
-                    print(f"Received authPrimary address: {authPrimary_ip}")
-                    authPrimary_port = int.from_bytes(node.recv(8), byteorder='big')
-                    print(f"Received authPrimary port: {authPrimary_port}")
-                    threading.Thread(target=self.handle_subAuth_creation, args=(authPrimary_ip, authPrimary_port, 0)).start()
+                    auth_primary_ip = node.recv(1024).decode()
+                    print(f"Received authPrimary address: {auth_primary_ip}")
+                    auth_primary_port = int.from_bytes(node.recv(8), byteorder='big')
+                    print(f"Received authPrimary port: {auth_primary_port}")
+                    threading.Thread(target=self.handle_subAuth_creation, args=(auth_primary_ip, auth_primary_port, 0)).start()
                 elif initial_message == "fdnSub":
                     print(f"Received connection from {addr} asking to start an fdnSub")
                     node.sendall(b"Address and Port")
-                    fdnPrimary_ip = node.recv(1024).decode()
-                    print(f"Received fdnPrimary address: {fdnPrimary_ip}")
-                    fdnPrimary_port = int.from_bytes(node.recv(8), byteorder='big')
-                    print(f"Received fdnPrimary port: {fdnPrimary_port}")
-                    threading.Thread(target=self.handle_subFdn_creation, args=(fdnPrimary_ip, fdnPrimary_port, 0)).start()
+                    fdn_primary_ip = node.recv(1024).decode()
+                    print(f"Received fdnPrimary address: {fdn_primary_ip}")
+                    fdn_primary_port = int.from_bytes(node.recv(8), byteorder='big')
+                    print(f"Received fdnPrimary port: {fdn_primary_port}")
+                    threading.Thread(target=self.handle_subFdn_creation, args=(fdn_primary_ip, fdn_primary_port, 0)).start()
                 else:
                     node.close()
 
@@ -113,24 +113,24 @@ class ControlNode:
         pid = subprocess.Popen([sys.executable, "fdnPrimary.py", str(bootstrap_ip), str(50000)],
                                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NEW_CONSOLE).pid
 
-    def handle_subAuth_creation(self, authPrimary_ip, authPrimary_port, delay):
+    def handle_subAuth_creation(self, auth_primary_ip, auth_primary_port, delay):
 
         # Delay
         time.sleep(delay)
 
-        print(f"\n** Starting authSub.py and passing authPrimary addr of {authPrimary_ip} and port {authPrimary_port} **\n")
+        print(f"\n** Starting authSub.py and passing authPrimary addr of {auth_primary_ip} and port {auth_primary_port} **\n")
 
-        pid = subprocess.Popen([sys.executable, "authSub.py", str(authPrimary_ip), str(authPrimary_port)],
+        pid = subprocess.Popen([sys.executable, "authSub.py", str(auth_primary_ip), str(auth_primary_port)],
                                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NEW_CONSOLE).pid
 
-    def handle_subFdn_creation(self, fdnPrimary_ip, fdnPrimary_port, delay):
+    def handle_subFdn_creation(self, fdn_primary_ip, fdn_primary_port, delay):
 
         # Delay
         time.sleep(delay)
 
-        print(f"\n** Starting fdnSub.py and passing FdnPrimary addr of {fdnPrimary_ip} and port {fdnPrimary_port} **\n")
+        print(f"\n** Starting fdnSub.py and passing FdnPrimary addr of {fdn_primary_ip} and port {fdn_primary_port} **\n")
 
-        pid = subprocess.Popen([sys.executable, "fdnSub.py", str(fdnPrimary_ip), str(fdnPrimary_port)],
+        pid = subprocess.Popen([sys.executable, "fdnSub.py", str(fdn_primary_ip), str(fdn_primary_port)],
                                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NEW_CONSOLE).pid
 
 
