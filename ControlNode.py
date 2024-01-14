@@ -87,6 +87,7 @@ class ControlNode:
             if not data:
                 break
             self.handle_instruction(data)
+            continue
 
     def handle_instruction(self, instruction):
         # Parse the instruction

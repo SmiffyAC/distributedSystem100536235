@@ -182,20 +182,21 @@ class Client:
                         self.audio_file_list = audio_file_list
                         self.json_audio_file_list = json.loads(audio_file_list)
 
+                        json_audio_file_list = json.loads(self.json_audio_file_list)
+                        print(f"\nFrom Fdn Sub: Audio file list: \n{json_audio_file_list}\n")
+
                         while True:
-                            json_audio_file_list = json.loads(self.json_audio_file_list)
-
-                            print(f"\nFrom Fdn Sub: Audio file list: \n{json_audio_file_list}\n")
                             song_choice = input("\nEnter the name of the song you would like to download: ")
-
-                            song_index = json_audio_file_list.index(song_choice + ".mp3")
-                            print(f"Index of chosen song = : {song_index}")
-
                             if song_choice in self.json_audio_file_list:
+                                song_file_name = song_choice + ".mp3"
+                                print(f"Song file name = {song_file_name}")
+                                song_index = json_audio_file_list.index(song_file_name)
+                                print(f"Song index = {song_index}")
+                                print(f"Index of chosen song = {song_index}")
                                 s.sendall(song_index.to_bytes(8, byteorder='big'))
                                 break
                             else:
-                                print("Song not found. Please try again.")
+                                print(f"\n !!! Song '{song_choice}' NOT found. Please try again. !!! \n")
                                 continue
 
                         audio_file_size_data = s.recv(8)

@@ -134,7 +134,58 @@ class BootstrapServer:
         print(f"File content to send: {file_content}")
         sock.sendall(file_content.encode('utf-8'))
 
+        handle_heartbeat_thread = threading.Thread(target=self.handle_heartbeat, args=(sock, node_info))
+        handle_heartbeat_thread.daemon = True
+        handle_heartbeat_thread.start()
+        # self.handle_heartbeat(sock)
+
         # ADD STUFF ABOUT HEARTBEAT FOR KILLING NODES
+
+    def handle_heartbeat(self, sock, node_info):
+        print(f"\n ** Receiving {node_info['name']} Heartbeats **")
+        sock.sendall(b"Start heartbeat")
+        # Set a timeout for the socket
+        # sock.settimeout(30)
+        while True:
+            primary_name = None
+            try:
+                heartbeat_message = sock.recv(1024).decode()
+                print(f"Heartbeat Received: {heartbeat_message}")
+                json_heartbeat = json.loads(heartbeat_message)
+                # Get the ip and port of the fdnSub that sent the heartbeat
+                primary_name = json_heartbeat[0]
+                primary_ip = json_heartbeat[1]
+                primary_port = json_heartbeat[2]
+                primary_num_of_subs = json_heartbeat[3]
+            # except socket.timeout:
+            #     print("Heartbeat timed out")
+            #     primary_name = node_info['name']
+            #     self.generate_new_primary(primary_name)
+            except socket.error as e:
+                print(f"Heartbeat failed - Error: {e}")
+                primary_name = node_info['name']
+                sock.close()
+                self.generate_new_primary(primary_name)
+                break
+
+    def generate_new_primary(self, primary_name):
+        print(f"Primary {primary_name} failed. Generating new primary in 15 seconds...")
+        # time.sleep(15)
+        for i in range(14, 0, -1):
+            print(f"{i} seconds...")
+            time.sleep(1)
+        if primary_name == "authPrimary":
+            auth_instruction = json.dumps({
+                    "command": "start_PrimaryAuth",
+                })
+            self.control_nodes[0].sendall(auth_instruction.encode('utf-8'))
+            print("Sent start_PrimaryAuth")
+        elif primary_name == "fdnPrimary":
+            fdn_instruction = json.dumps({
+                    "command": "start_PrimaryFdn",
+                })
+            self.control_nodes[1].sendall(fdn_instruction.encode('utf-8'))
+            print("Sent start_PrimaryFdn")
 
     def handle_fdn_primary(self, sock, node_info):
 
@@ -195,20 +246,27 @@ class BootstrapServer:
                     print(f"fdnPrimary: File {file_index} received")
                     file_index += 1
 
-            fdn_primary_message_3 = sock.recv(1024).decode()
+            # fdn_primary_message_3 = sock.recv(1024).decode()
+            #
+            # if fdn_primary_message_3 == "All files Received":
+            #     sock.sendall(b"Ready to provide fdnPrimary address")
+            #
+            #     message = sock.recv(1024).decode()
+            #     print(f"Received message: {message}")
+            #
+            #     if message == 'fdnPrimary address':
+            #         # print(f"Received message: {message}")
+            #         sock.sendall(self.fdn_primary_node_ip.encode('utf-8'))
+            #         print(f"Sent fdnPrimary address: {self.fdn_primary_node_ip}")
+            #         sock.sendall(self.fdn_primary_node_port.to_bytes(8, byteorder='big'))
+            #         print(f"Sent fdnPrimary port: {self.fdn_primary_node_port}")
 
-            if fdn_primary_message_3 == "All files Received":
-                sock.sendall(b"Ready to provide fdnPrimary address")
+        # sock.sendall(b"Start heartbeat")
+        handle_heartbeat_thread = threading.Thread(target=self.handle_heartbeat, args=(sock, node_info))
+        handle_heartbeat_thread.daemon = True
+        handle_heartbeat_thread.start()
 
-                message = sock.recv(1024).decode()
-                print(f"Received message: {message}")
-
-                if message == 'fdnPrimary address':
-                    # print(f"Received message: {message}")
-                    sock.sendall(self.fdn_primary_node_ip.encode('utf-8'))
-                    print(f"Sent fdnPrimary address: {self.fdn_primary_node_ip}")
-                    sock.sendall(self.fdn_primary_node_port.to_bytes(8, byteorder='big'))
-                    print(f"Sent fdnPrimary port: {self.fdn_primary_node_port}")
+        # self.handle_heartbeat(sock)
 
         # ADD STUFF ABOUT HEARTBEAT FOR KILLING NODES
 

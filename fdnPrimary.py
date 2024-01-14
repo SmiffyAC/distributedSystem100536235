@@ -1,5 +1,6 @@
 import socket
 import json
+import sys
 import threading
 import argparse
 import os
@@ -116,10 +117,39 @@ class FdnPrimary:
                     sock.sendall(b"File received")
                     file += 1
 
-                sock.sendall(b"All files Received")
+                # sock.sendall(b"All files Received")
 
-                # Generate the fdnSubs
-                self.generate_fdn_subs()
+                bootstrap_message = sock.recv(1024).decode()
+                print(f"\n** Received bootstrap message: {bootstrap_message} **\n")
+
+                heartbeat_tread = threading.Thread(target=self.generate_fdn_subs)
+                heartbeat_tread.daemon = True
+                heartbeat_tread.start()
+
+                if bootstrap_message == "Start heartbeat":
+                    print("\n ** Bootstrap Heartbeat Started **")
+                    # # Start heartbeat thread to send heartbeats to bootstrap
+                    # heartbeat_tread = threading.Thread(target=self.send_heartbeat_to_bootstrap, args=(sock,))
+                    # heartbeat_tread.daemon = True
+                    # heartbeat_tread.start()
+                    self.send_heartbeat_to_bootstrap(sock)
+
+    def send_heartbeat_to_bootstrap(self, sock):
+        time.sleep(5)
+        print("\n ** Heartbeat started **")
+        while True:
+            heartbeat_list = ["fdnPrimary", self.host, self.port, self.numOfFdnSubs]
+            heartbeat = json.dumps(heartbeat_list)
+            print(f"Heartbeat Sent: {heartbeat}")
+            try:
+                sock.sendall(heartbeat.encode())
+            except socket.error as e:
+                print(f"Failed to send heartbeat: {e}")
+                print(f"Closing program due to failed heartbeat send in 5 seconds.")
+                time.sleep(5)
+                sys.exit("Closing program due to failed heartbeat send.")
+
+            time.sleep(10)
 
     def generate_fdn_subs(self):
         print(f"\n** Generating FdnSubs **")

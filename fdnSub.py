@@ -1,5 +1,6 @@
 import socket
 import json
+import sys
 import threading
 import argparse
 import time
@@ -109,7 +110,14 @@ class FdnSub:
 
             heartbeat = json.dumps(heartbeatList)
             print(f"Heartbeat Sent: {heartbeat}")
-            s.sendall(heartbeat.encode())
+            try:
+                s.sendall(heartbeat.encode())
+            except socket.error as e:
+                print(f"Failed to send heartbeat: {e}")
+                print(f"Closing program due to failed heartbeat send in 2 seconds.")
+                time.sleep(2)
+                sys.exit("Closing program due to failed heartbeat send.")
+
             time.sleep(10)
 
     def handle_client_connection(self):
@@ -224,5 +232,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     new_FdnSub = FdnSub(name="fdnSub")
-    threading.Thread(target=new_FdnSub.handle_client_connection).start()
+    connections_thread = threading.Thread(target=new_FdnSub.handle_client_connection)
+    connections_thread.daemon = True
+    connections_thread.start()
     new_FdnSub.connect_to_fdnPrimary(args.ip, args.port)

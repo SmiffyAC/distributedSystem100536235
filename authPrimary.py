@@ -1,5 +1,6 @@
 import socket
 import json
+import sys
 import threading
 import argparse
 import time
@@ -62,7 +63,37 @@ class AuthPrimary:
             self.authSub_file = sock.recv(1024).decode()
             print(f"\nReceived file data:\n{self.authSub_file}")
 
-            self.generate_auth_subs()
+            bootstrap_message = sock.recv(1024).decode()
+
+            heartbeat_tread = threading.Thread(target=self.generate_auth_subs)
+            heartbeat_tread.daemon = True
+            heartbeat_tread.start()
+
+            # self.generate_auth_subs()
+
+            if bootstrap_message == "Start heartbeat":
+                print("\n ** Bootstrap Heartbeat Started **")
+                # # Start heartbeat thread to send heartbeats to bootstrap
+                # heartbeat_tread = threading.Thread(target=self.send_heartbeat_to_bootstrap, args=(sock,))
+                # heartbeat_tread.daemon = True
+                # heartbeat_tread.start()
+                self.send_heartbeat_to_bootstrap(sock)
+
+    def send_heartbeat_to_bootstrap(self, sock):
+        print("\n ** Heartbeat started **")
+        while True:
+            heartbeat_list = ["authPrimary", self.host, self.port, self.numOfAuthSubs]
+            heartbeat = json.dumps(heartbeat_list)
+            print(f"Heartbeat Sent: {heartbeat}")
+            try:
+                sock.sendall(heartbeat.encode())
+            except socket.error as e:
+                print(f"Failed to send heartbeat: {e}")
+                print(f"Closing program due to failed heartbeat send in 5 seconds.")
+                time.sleep(5)
+                sys.exit("Closing program due to failed heartbeat send.")
+
+            time.sleep(10)
 
     def generate_auth_subs(self):
         print("\n ** Generating AuthSubs **")

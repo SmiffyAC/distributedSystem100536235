@@ -5,3 +5,5 @@ max222,manu23
 bobby,pink
 appleman,green
 chandler,pizza
+batman,batbike
+lucy,apple

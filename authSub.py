@@ -69,6 +69,8 @@ class AuthSub:
                 s.sendall(heartbeat.encode())
             except socket.error as e:
                 print(f"Failed to send heartbeat: {e}")
+                print(f"Closing program due to failed heartbeat send in 2 seconds.")
+                time.sleep(2)
                 sys.exit("Closing program due to failed heartbeat send.")
 
             time.sleep(10)
