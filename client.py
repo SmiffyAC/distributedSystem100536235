@@ -184,7 +184,12 @@ class Client:
                         self.json_audio_file_list = json.loads(audio_file_list)
 
                         json_audio_file_list = json.loads(self.json_audio_file_list)
-                        print(f"\nFrom Fdn Sub: Audio file list: \n{json_audio_file_list}\n")
+                        # Remove the .mp3 from the end of each song name
+                        display_audio_file_list = json_audio_file_list.copy()
+                        for i in range(len(display_audio_file_list)):
+                            display_audio_file_list[i] = display_audio_file_list[i][:-4]
+
+                        print(f"\nFrom Fdn Sub: Audio file list: \n{display_audio_file_list}\n")
 
                         while True:
                             song_choice = input("\nEnter the name of the song you would like to download: ")
