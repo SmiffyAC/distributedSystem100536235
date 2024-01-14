@@ -1,6 +1,7 @@
 import argparse
 import socket
 import json
+import sys
 import threading
 import time
 
@@ -64,7 +65,11 @@ class AuthSub:
 
             heartbeat = json.dumps(heartbeat_list)
             print(f"Heartbeat Sent: {heartbeat}")
-            s.sendall(heartbeat.encode())
+            try:
+                s.sendall(heartbeat.encode())
+            except socket.error as e:
+                print(f"Failed to send heartbeat: {e}")
+                sys.exit("Closing program due to failed heartbeat send.")
 
             time.sleep(10)
 
@@ -81,11 +86,15 @@ class AuthSub:
 
                 if connection_message == 'client':
                     print(f"Accepted connection from client with info: {addr}")
-                    threading.Thread(target=self.handle_client_connection, args=(node,)).start()
+                    client_thread = threading.Thread(target=self.handle_client_connection, args=(node,))
+                    client_thread.daemon = True
+                    client_thread.start()
 
                 elif connection_message == 'fdnSub':
                     print(f"Accepted connection from client with info: {addr}")
-                    threading.Thread(target=self.handle_fdnSub_connection, args=(node,)).start()
+                    fdn_sub_thread = threading.Thread(target=self.handle_fdnSub_connection, args=(node,))
+                    fdn_sub_thread.daemon = True
+                    fdn_sub_thread.start()
 
     def handle_client_connection(self, node):
 
@@ -128,5 +137,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     new_AuthSub = AuthSub(name="authSub")
-    threading.Thread(target=new_AuthSub.accept_client_connection).start()
+    connections_thread = threading.Thread(target=new_AuthSub.accept_client_connection)
+    connections_thread.daemon = True
+    connections_thread.start()
     new_AuthSub.connect_to_authPrimary(args.ip, args.port)
