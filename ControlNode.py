@@ -73,7 +73,7 @@ class ControlNode:
                     client_info = {"name": self.name, "ip": self.host, "port": self.port}
                     # Send the client information to the Bootstrap Server
                     sock.sendall(json.dumps(client_info).encode('utf-8'))
-                    print(f"Connected to Bootstrap Server and sent info: {client_info}")
+                    print(f"Connected to Bootstrap Server and sent info: {client_info}\n")
                     self.listen_for_instructions(sock)
                     break  # Break the loop if connection is successful
             except ConnectionRefusedError:
@@ -93,15 +93,7 @@ class ControlNode:
         instruction_data = json.loads(instruction)
 
         # Check the type of instruction
-        if instruction_data.get('command') == 'start_nodes':
-            num_instances = instruction_data.get('num_instances')
-            self.instance_creation_delay = instruction_data.get('delay', 0)
-
-            print(f"Starting {num_instances} node instances after a delay of {self.instance_creation_delay} seconds.")
-            for _ in range(num_instances):
-                time.sleep(self.instance_creation_delay)
-                self.start_node_instance()
-        elif instruction_data.get('command') == 'start_PrimaryAuth':
+        if instruction_data.get('command') == 'start_PrimaryAuth':
             print("FROM BOOTSTRAP: start_PrimaryAuth")
             self.handle_authPrimary_creation()
 
@@ -109,20 +101,14 @@ class ControlNode:
             print("FROM BOOTSTRAP: start_PrimaryFdn")
             self.handle_fdnPrimary_creation()
 
-    def start_node_instance(self):
-        # Logic to start a node.py instance
-        print("Starting a node.py instance...")
-        pid = subprocess.Popen([sys.executable, "node.py"],
-                               creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NEW_CONSOLE).pid
-
     def handle_authPrimary_creation(self):
-        print(f"Starting authPrimary.py and passing BS addr of {bootstrap_ip} and port {50000}")
+        print(f"\n** Starting authPrimary.py and passing BS addr of {bootstrap_ip} and port {50000} **\n")
 
         pid = subprocess.Popen([sys.executable, "authPrimary.py", str(bootstrap_ip), str(50000)],
                                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NEW_CONSOLE).pid
 
     def handle_fdnPrimary_creation(self):
-        print(f"Starting fdnPrimary.py and passing BS addr of {bootstrap_ip} and port {50000}")
+        print(f"\n** Starting fdnPrimary.py and passing BS addr of {bootstrap_ip} and port {50000} **\n")
 
         pid = subprocess.Popen([sys.executable, "fdnPrimary.py", str(bootstrap_ip), str(50000)],
                                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NEW_CONSOLE).pid
@@ -132,7 +118,7 @@ class ControlNode:
         # Delay
         time.sleep(delay)
 
-        print(f"Starting authSub.py")
+        print(f"\n** Starting authSub.py and passing authPrimary addr of {authPrimary_ip} and port {authPrimary_port} **\n")
 
         pid = subprocess.Popen([sys.executable, "authSub.py", str(authPrimary_ip), str(authPrimary_port)],
                                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NEW_CONSOLE).pid
@@ -142,7 +128,7 @@ class ControlNode:
         # Delay
         time.sleep(delay)
 
-        print(f"Starting fdnSub.py")
+        print(f"\n** Starting fdnSub.py and passing FdnPrimary addr of {fdnPrimary_ip} and port {fdnPrimary_port} **\n")
 
         pid = subprocess.Popen([sys.executable, "fdnSub.py", str(fdnPrimary_ip), str(fdnPrimary_port)],
                                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NEW_CONSOLE).pid
@@ -153,8 +139,5 @@ if __name__ == '__main__':
     control_node = ControlNode(name="controlNode")
     # Connect the control node to the Bootstrap Server
     bootstrap_ip = open('bootstrap_ip.txt', 'r').read().strip()
-    print("cheese")
     threading.Thread(target=control_node.accept_connections).start()
-    print("burger")
     control_node.connect_to_bootstrap(bootstrap_ip, 50000)
-    print("wakka")

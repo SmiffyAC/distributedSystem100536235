@@ -2,3 +2,5 @@ chris2024,derby123
 chris2024v2,derby12345
 bob,678
 max222,manu23
+bobby,pink
+appleman,green

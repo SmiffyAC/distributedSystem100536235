@@ -43,7 +43,7 @@ class Client:
             print(f"Connected to Bootstrap Server and sent info: {client_info}")
 
             response = sock.recv(1024).decode()
-            print(f"Received response: {response}")
+            print(f"From BootStrap: {response}")
 
             if response == 'Welcome client':
                 if self.token is None:
@@ -52,15 +52,14 @@ class Client:
                     self.handle_fdn(sock)
 
     def handle_auth(self, sock):
-        print("Handling auth")
         sock.sendall(b"authPrimary address")
 
         # Wait for auth address from server
         auth_primary_ip = sock.recv(1024).decode()
-        print(f"Received auth address: {auth_primary_ip}")
+        print(f"From Bootstrap: Auth Primary address: {auth_primary_ip}")
 
         auth_primary_port = int.from_bytes(sock.recv(8), byteorder='big')
-        print(f"Received auth port: {auth_primary_port}")
+        print(f"From Bootstrap: Auth Primary port: {auth_primary_port}")
 
         self.connect_to_authPrimary(auth_primary_ip, auth_primary_port)
 
@@ -96,9 +95,9 @@ class Client:
 
             # Receive the authSub address
             authSub_ip = s.recv(1024).decode()
-            print(f"AuthPrimary provided following ip for authSub: {authSub_ip}")
+            print(f"From AuthPrimary: Auth Sub address = {authSub_ip}")
             authSub_port = int.from_bytes(s.recv(8), byteorder='big')
-            print(f"AuthPrimary provided following port for authSub: {authSub_port}")
+            print(f"From AuthPrimary: Auth Sub port = {authSub_port}")
 
             self.connect_to_authSub(authSub_ip, authSub_port)
 
@@ -118,7 +117,7 @@ class Client:
 
                     self.token = s.recv(1024).decode()
 
-                    print(f"Received token: {self.token}")
+                    print(f"From Auth Sub: Received token = {self.token}")
 
                     if self.token is not None:
                         break
@@ -126,15 +125,14 @@ class Client:
             self.connect_to_bootstrap(bootstrap_ip, bootstrap_port)
 
     def handle_fdn(self, sock):
-        print("Handling fdn")
         sock.sendall(b"fdnPrimary address")
 
         # Wait for fdn address from server
         fdn_primary_ip = sock.recv(1024).decode()
-        print(f"Received fdn address: {fdn_primary_ip}")
+        print(f"From Bootstrap: Fdn Primary address = {fdn_primary_ip}")
 
         fdn_primary_port = int.from_bytes(sock.recv(8), byteorder='big')
-        print(f"Received fdn port: {fdn_primary_port}")
+        print(f"From Bootstrap: Fdn Primary port = {fdn_primary_port}")
 
         self.connect_to_fdnPrimary(fdn_primary_ip, fdn_primary_port)
 
@@ -142,7 +140,7 @@ class Client:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.connect((fdn_primary_ip, fdn_primary_port))
 
-            print(f"Connected to FDN Primary at {fdn_primary_ip}:{fdn_primary_port}")
+            print(f"Connected to Fdn Primary at {fdn_primary_ip}:{fdn_primary_port}")
 
             # Tell the FDNPrimary that this is a client
             s.sendall(b"client")
@@ -152,14 +150,13 @@ class Client:
 
             # Receive the fdnSub address
             fdnSub_ip = s.recv(1024).decode()
-            print(f"FDNPrimary provided following ip for fdnSub: {fdnSub_ip}")
+            print(f"From FdnPrimary: Fdn Sub address = {fdnSub_ip}")
             fdnSub_port = int.from_bytes(s.recv(8), byteorder='big')
-            print(f"FDNPrimary provided following port for fdnSub: {fdnSub_port}")
+            print(f"From FdnPrimary: Fdn Sub port = {fdnSub_port}")
 
             self.connect_to_fdnSub(fdnSub_ip, fdnSub_port)
 
     def connect_to_fdnSub(self, fdnSub_ip, fdnSub_port):
-        print("IN CONNECT_TO_FDNSUB")
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 
             s.connect((fdnSub_ip, fdnSub_port))
@@ -182,20 +179,17 @@ class Client:
                         s.sendall(b"song list")
 
                         audio_file_list = s.recv(1024).decode()
-                        print(f"Received audio file list: {audio_file_list}")
                         self.audio_file_list = audio_file_list
-                        print(f"FROM FDNSUB - Audio file list: {self.audio_file_list}")
                         self.json_audio_file_list = json.loads(audio_file_list)
-                        print(f"FROM FDNSUB - JSON audio file list: {self.json_audio_file_list}")
 
                         while True:
-                            song_choice = input("Enter the name of the song you would like to download: ")
-
                             json_audio_file_list = json.loads(self.json_audio_file_list)
 
-                            print(f"Audio file list: {json_audio_file_list}")
+                            print(f"\nFrom Fdn Sub: Audio file list: \n{json_audio_file_list}\n")
+                            song_choice = input("\nEnter the name of the song you would like to download: ")
+
                             song_index = json_audio_file_list.index(song_choice + ".mp3")
-                            print(f"Song Index: {song_index}")
+                            print(f"Index of chosen song = : {song_index}")
 
                             if song_choice in self.json_audio_file_list:
                                 s.sendall(song_index.to_bytes(8, byteorder='big'))
@@ -206,7 +200,7 @@ class Client:
 
                         audio_file_size_data = s.recv(8)
                         audio_file_size = int.from_bytes(audio_file_size_data, byteorder='big')
-                        print(f"Audio File size: {audio_file_size}")
+                        print(f"From Fdn Sub: Audio File size = {audio_file_size}")
 
                         mp3_data = b''
                         while len(mp3_data) < audio_file_size:
@@ -219,18 +213,18 @@ class Client:
                         print(self.audio_file_size_list)
                         self.audio_file_data_list.append(mp3_data)
                         received_md5_hash = s.recv(1024).decode()
-                        print(f"\nReceived MD5 Hash: {received_md5_hash}")
-                        print(f"File received")
+                        print(f"\n** File received **\n")
+                        print(f"\n From Fdn Sub: MD5 Hash for chosen song = {received_md5_hash}")
 
                         with open("Received " + song_choice + '.mp3', 'wb') as f:
                             f.write(mp3_data)
                             generated_md5_hash = hashlib.md5(mp3_data).hexdigest()
-                            print(f"\nGenerated MD5 Hash: {generated_md5_hash}")
+                            print(f"\nGenerated MD5 Hash from received file =  {generated_md5_hash}")
 
                             if received_md5_hash == generated_md5_hash:
                                 print("\n** MD5 Hashes match **\n")
                             else:
-                                print("MD5 Hashes do not match - file may be corrupted")
+                                print("\n** MD5 Hashes do not match - file may be corrupted **\n")
 
                         s.sendall(b"File received")
 
@@ -253,14 +247,14 @@ class Client:
         pygame.mixer.music.load(song_path)
         pygame.mixer.music.play()
 
-        print("Press space to pause, press space again to unpause, press q to quit")
+        print("Press 'SPACE' to pause/unpause or press 'q' to quit (then press enter)")
 
         running = True
         paused = False
         while running:
 
             if not paused:
-                client_input = input("Press SPACE to pause (Press 'q' to quit song) : ")
+                client_input = input("Press 'SPACE' to pause or 'q' to quit song (then press enter): ")
                 if client_input == ' ':
                     paused = True
                     pygame.mixer.music.pause()
@@ -268,7 +262,7 @@ class Client:
                 elif client_input == 'q':
                     running = False
             else:
-                client_input = input("Press SPACE to unpause (Press 'q' to quit song) : ")
+                client_input = input("Press SPACE to unpause or 'q' to quit song (then press enter): ")
                 if client_input == ' ':
                     paused = False
                     pygame.mixer.music.unpause()

@@ -82,11 +82,9 @@ class FdnPrimary:
                 print(f"Expected number of audio files: {self.number_of_files}")
 
                 audio_file_list = sock.recv(1024).decode()
-                print(f"Received audio file list: {audio_file_list}")
                 self.audio_file_list = audio_file_list
-                print(f"FROM BOOSTRAP - Audio file list: {self.audio_file_list}")
                 self.json_audio_file_list = json.loads(audio_file_list)
-                print(f"FROM BOOTSTRAP - JSON audio file list: {self.json_audio_file_list}")
+                print(f"From Bootstrap: Audio File List = {self.json_audio_file_list}")
 
                 sock.sendall(b"Ready to receive audio files")
                 print(f"Sent ready to receive audio files message")
@@ -109,10 +107,10 @@ class FdnPrimary:
                     print(self.audio_file_size_list)
                     self.audio_file_data_list.append(mp3_data)
                     md5_hash = sock.recv(1024)
+                    print(f"From Bootstrap: Provided MD5 Hash = {md5_hash}")
                     print(md5_hash)
                     self.md5_hash_list.append(md5_hash)
-                    print(f"MD5_hash_list: {self.md5_hash_list}")
-                    print(f"File {file} received")
+                    print(f"File {file + 1} received\n")
                     sock.sendall(b"File received")
                     file += 1
 
@@ -122,6 +120,7 @@ class FdnPrimary:
                 self.generate_fdn_subs()
 
     def generate_fdn_subs(self):
+        print(f"\n** Generating FdnSubs **")
         num_generated = 0
         while num_generated < 2:
             random_control_node_index = random.randint(0, len(self.control_node_ips) - 1)
@@ -179,7 +178,6 @@ class FdnPrimary:
                 if self.numOfFdnSubs == 2:
                     # Receive the fdnSub address and port
                     sock.sendall(b"Address and Port")
-                    print(f"Asked subAuth for address and port - NUMOFSUBFDNS = {self.numOfFdnSubs}")
 
                     self.fdnSub_ip = sock.recv(1024).decode()
                     print(f"Received fdnSub address: {self.fdnSub_ip}")
@@ -206,8 +204,6 @@ class FdnPrimary:
 
                     # Send the list of audio files to chose from
                     audio_file_list = json.dumps(audio_file_paths)
-                    print(f"JSON audio file list: {audio_file_list}")
-                    print(f"JSON audio file list ENCODED: {self.audio_file_list.encode()}")
                     sock.sendall(audio_file_list.encode())
 
                     authsub_message = sock.recv(1024).decode()
@@ -232,7 +228,6 @@ class FdnPrimary:
                                 file_index += 1
                     break
                 else:
-                    print(f"Waiting for second fdnSub to connect - NUMOFSUBFDNS = {self.numOfFdnSubs}")
                     time.sleep(1)
             except:
                 pass

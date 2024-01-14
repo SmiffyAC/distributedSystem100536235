@@ -41,70 +41,6 @@ class FdnSub:
                     return port
         raise Exception("No open ports available in the specified range.")
 
-    def connect_to_bootstrap(self, bootstrap_host, bootstrap_port):
-        print(f"AuthSub connecting to Bootstrap Server at {bootstrap_host}:{bootstrap_port}")
-        # Connect to the Bootstrap Server
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-            sock.connect((bootstrap_host, bootstrap_port))
-            # Prepare the client information as JSON
-            client_info = {"name": self.name, "ip": self.host, "port": self.port}
-            print(f"\nClient info TO SEND: {client_info}")
-            # Send the client information to the Bootstrap Server
-            sock.sendall(json.dumps(client_info).encode('utf-8'))
-            print(f"Connected to Bootstrap Server and sent info: {client_info}")
-
-            self.number_of_files = int.from_bytes(sock.recv(8), byteorder='big')
-            print(f"Expected number of audio files: {self.number_of_files}")
-
-            audio_file_list = sock.recv(1024).decode()
-            print(f"Received audio file list: {audio_file_list}")
-            self.audio_file_list = audio_file_list
-            print(f"FROM BOOSTRAP - Audio file list: {self.audio_file_list}")
-            self.json_audio_file_list = json.loads(audio_file_list)
-            print(f"FROM BOOTSTRAP - JSON audio file list: {self.json_audio_file_list}")
-
-            sock.sendall(b"Ready to receive audio files")
-            print(f"Sent ready to receive audio files message")
-
-            file = 0
-
-            while file < self.number_of_files:
-                audio_file_size_data = sock.recv(8)
-                audio_file_size = int.from_bytes(audio_file_size_data, byteorder='big')
-                print(f"Audio File size: {audio_file_size}")
-
-                mp3_data = b''
-                while len(mp3_data) < audio_file_size:
-                    chunk = sock.recv(min(4096, audio_file_size - len(mp3_data)))
-                    if not chunk:
-                        break
-                    mp3_data += chunk
-
-                self.audio_file_size_list.append(audio_file_size)
-                print(self.audio_file_size_list)
-                self.audio_file_data_list.append(mp3_data)
-                md5_hash = sock.recv(1024)
-                print(md5_hash)
-                self.md5_hash_list.append(md5_hash)
-                print(f"MD5_hash_list: {self.md5_hash_list}")
-                print(f"File {file} received")
-                sock.sendall(b"File received")
-                file += 1
-
-            sock.sendall(b"All files Received")
-
-            # HANDLE THE DATA IT WILL RECEIVE PRIMARY FDN ADDRESS FROM THE BOOTSTRAP SERVER
-            if sock.recv(1024).decode() == "Ready to provide fdnPrimary address":
-                sock.sendall(b"fdnPrimary address")
-                # Wait for fdn address from server
-                fdn_primary_ip = sock.recv(1024).decode()
-                print(f"Received fdnPrimary address: {fdn_primary_ip}")
-
-                fdn_primary_port = int.from_bytes(sock.recv(8), byteorder='big')
-                print(f"Received fdnPrimary port: {fdn_primary_port}")
-
-            threading.Thread(target=self.connect_to_fdnPrimary, args=(fdn_primary_ip, fdn_primary_port)).start()
-
     def connect_to_fdnPrimary(self, fdn_primary_ip, fdn_primary_port):
         print(f"\nWaiting for fdnPrimary to be ready at {fdn_primary_ip}:{fdn_primary_port}")
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -130,17 +66,14 @@ class FdnSub:
             # Receive the audio files from the Fdn Primary
 
             self.number_of_files = int.from_bytes(s.recv(8), byteorder='big')
-            print(f"Expected number of audio files: {self.number_of_files}")
+            print(f"\nExpected number of audio files: {self.number_of_files}")
 
             audio_file_list = s.recv(1024).decode()
-            print(f"Received audio file list: {audio_file_list}")
             self.audio_file_list = audio_file_list
-            print(f"FROM FDNPRIMARY - Audio file list: {self.audio_file_list}")
             self.json_audio_file_list = json.loads(audio_file_list)
-            print(f"FROM FDNPRIMARY - JSON audio file list: {self.json_audio_file_list}")
+            print(f"\nFrom FdnPrimary: Audio File List: {self.json_audio_file_list}\n")
 
             s.sendall(b"Ready to receive audio files")
-            print(f"Sent ready to receive audio files message")
 
             file = 0
 
@@ -157,23 +90,21 @@ class FdnSub:
                     mp3_data += chunk
 
                 self.audio_file_size_list.append(audio_file_size)
-                print(self.audio_file_size_list)
                 self.audio_file_data_list.append(mp3_data)
                 md5_hash = s.recv(1024)
-                print(md5_hash)
+                print(f"From FdnPrimary: Provided MD5 Hash = {md5_hash}")
                 self.md5_hash_list.append(md5_hash)
-                print(f"MD5_hash_list: {self.md5_hash_list}")
-                print(f"File {file} received")
+                print(f"File {file + 1} received\n")
                 s.sendall(b"File received")
                 file += 1
 
             fdnPrimary_message_2 = s.recv(1024).decode()
 
             if fdnPrimary_message_2 == "Start heartbeat":
+                print("\n ** Heartbeat started **")
                 self.send_heartbeat_to_fdnPrimary(s)
 
     def send_heartbeat_to_fdnPrimary(self, s):
-        print(f"IN SEND_HEARTBEAT_TO_FDNPRIMARY - Sending heartbeat to Fdn Primary")
         time.sleep(5)
         while True:
             heartbeatList = []
@@ -188,7 +119,6 @@ class FdnSub:
 
 
     def handle_client_connection(self):
-        print(f"IN HANDLE_CLIENT_CONNECTION - Inside thread for handle_client_connection")
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             sock.bind((self.host, self.port))
             sock.listen()

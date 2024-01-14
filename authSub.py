@@ -30,30 +30,6 @@ class AuthSub:
                     return port
         raise Exception("No open ports available in the specified range.")
 
-    def connect_to_bootstrap(self, bootstrap_host, bootstrap_port):
-        print(f"AuthSub connecting to Bootstrap Server at {bootstrap_host}:{bootstrap_port}")
-        # Connect to the Bootstrap Server
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-            sock.connect((bootstrap_host, bootstrap_port))
-            # Prepare the client information as JSON
-            client_info = {"name": self.name, "ip": self.host, "port": self.port}
-            print(f"\nClient info TO SEND: {client_info}")
-            # Send the client information to the Bootstrap Server
-            sock.sendall(json.dumps(client_info).encode('utf-8'))
-            print(f"Connected to Bootstrap Server and sent info: {client_info}")
-
-            # HANDLE THE DATA IT WILL RECEIVE PRIMARY AUTH ADDRESS FROM THE BOOTSTRAP SERVER
-            if sock.recv(1024).decode() == "Ready to provide authPrimary address":
-                sock.sendall(b"authPrimary address")
-                # Wait for auth address from server
-                auth_primary_ip = sock.recv(1024).decode()
-                print(f"Received authPrimary address: {auth_primary_ip}")
-
-                auth_primary_port = int.from_bytes(sock.recv(8), byteorder='big')
-                print(f"Received authPrimary port: {auth_primary_port}")
-
-            threading.Thread(target=self.connect_to_authPrimary, args=(auth_primary_ip, auth_primary_port)).start()
-
     def connect_to_authPrimary(self, auth_primary_ip, auth_primary_port):
         print(f"\nWaiting for authPrimary to be ready at {auth_primary_ip}:{auth_primary_port}")
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -80,10 +56,10 @@ class AuthSub:
             authPrimary_message_2 = s.recv(1024).decode()
 
             if authPrimary_message_2 == "Start heartbeat":
+                print("\n ** Heartbeat started **")
                 self.send_heartbeat_to_authPrimary(s)
 
     def send_heartbeat_to_authPrimary(self, s):
-        print(f"IN SEND_HEARTBEAT_TO_AUTHPRIMARY - Sending heartbeat to Auth Primary")
         time.sleep(5)
         while True:
             heartbeatList = []
@@ -98,7 +74,6 @@ class AuthSub:
             time.sleep(10)
 
     def accept_client_connection(self):
-        print(f"IN ACCEPT_CLIENT_CONNECTION - Inside thread for accept_client_connection")
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             sock.bind((self.host, self.port))
             sock.listen()

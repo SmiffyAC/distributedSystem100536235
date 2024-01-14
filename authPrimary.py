@@ -62,16 +62,17 @@ class AuthPrimary:
             if sock.recv(1024).decode() == "Ready to provide controlNode list":
                 # Receive the control node ips
                 self.control_node_ips = json.loads(sock.recv(1024).decode())
-                print(f"Received controlNode ips: {self.control_node_ips}")
+                print(f"\nReceived controlNode ips: {self.control_node_ips}")
                 self.control_node_ports = json.loads(sock.recv(1024).decode())
                 print(f"Received controlNode ports: {self.control_node_ports}")
 
             self.authSub_file = sock.recv(1024).decode()
-            print(f"Received file data: {self.authSub_file}")
+            print(f"\nReceived file data:\n{self.authSub_file}")
 
             self.generate_auth_subs()
 
     def generate_auth_subs(self):
+        print("\n ** Generating AuthSubs **")
         # While two authSubs have not been created, generate one
         num_generated = 0
         while num_generated < 2:
@@ -79,7 +80,7 @@ class AuthPrimary:
             control_node_ip = self.control_node_ips[random_control_node_index]
             print(f"random_control_node_ip: {control_node_ip}")
             control_node_port = self.control_node_ports[random_control_node_index]
-            print(f"random_control_node_port: {control_node_port}")
+            print(f"random_control_node_port: {control_node_port}\n")
 
             # Create the authSub
             threading.Thread(target=self.connect_to_control_node, args=(control_node_ip, control_node_port)).start()
@@ -95,9 +96,8 @@ class AuthPrimary:
 
             if sock.recv(1024).decode() == "Address and Port":
                 sock.sendall(self.host.encode())
-                print(f"Sent AuthPrimary address: {self.host}")
                 sock.sendall(self.port.to_bytes(8, byteorder='big'))
-                print(f"Sent AuthPrimary port: {self.port}")
+                print(f"Sent AuthPrimary address {self.host} and port {self.port} to randomly selected control node\n")
 
 
 
@@ -134,7 +134,6 @@ class AuthPrimary:
                 if self.numOfAuthSubs == 2:
                     # Receive the authSub address and port
                     sock.sendall(b"Address and Port")
-                    print(f"Asked subAuth for address and port - NUMOFSUBAUTHS = {self.numOfAuthSubs}")
 
                     self.authSub_ip = sock.recv(1024).decode()
                     print(f"Received authSub address: {self.authSub_ip}")
@@ -142,17 +141,16 @@ class AuthPrimary:
                     print(f"Received authSub port: {self.authSub_port}")
                     break
                 else:
-                    print(f"Waiting for second authSub to connect - NUMOFSUBAUTHS = {self.numOfAuthSubs}")
                     time.sleep(1)
             except:
                 pass
 
         # Tell subAuths to start sending heartbeats
         sock.sendall(b"Start heartbeat")
-        # self.handle_authSub_heartbeat(sock, addr)
         threading.Thread(target=self.handle_authSub_heartbeat, args=(sock, addr)).start()
 
     def handle_authSub_heartbeat(self, sock, addr):
+        print("\n ** Receiving Heartbeats **")
         while True:
             heartbeat_message = sock.recv(1024).decode()
 
@@ -179,7 +177,8 @@ class AuthPrimary:
                 print(f"New subAuth with lowest number of clients: {self.subAuthWithLowestNumOfClients_ip}, {self.subAuthWithLowestNumOfClients_port}, {self.subAuthWithLowestNumOfClients_numOfConnectedClients}")
 
             else:
-                print("No new subAuth with lowest number of clients")
+                # print("No new subAuth with lowest number of clients")
+                continue
 
 
             time.sleep(5)
