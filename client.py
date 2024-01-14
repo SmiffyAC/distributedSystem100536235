@@ -187,14 +187,17 @@ class Client:
 
                         while True:
                             song_choice = input("\nEnter the name of the song you would like to download: ")
-                            if song_choice in self.json_audio_file_list:
-                                song_file_name = song_choice + ".mp3"
-                                print(f"Song file name = {song_file_name}")
+                            song_file_name = song_choice + ".mp3"
+                            if song_file_name in self.json_audio_file_list:
+
+                                print(f"\nSong file name = {song_file_name}")
                                 song_index = json_audio_file_list.index(song_file_name)
-                                print(f"Song index = {song_index}")
                                 print(f"Index of chosen song = {song_index}")
                                 s.sendall(song_index.to_bytes(8, byteorder='big'))
                                 break
+                            elif song_file_name == ' .mp3':
+                                print("\n !!! Song name cannot be blank. Please try again. !!! \n")
+                                continue
                             else:
                                 print(f"\n !!! Song '{song_choice}' NOT found. Please try again. !!! \n")
                                 continue
@@ -211,11 +214,10 @@ class Client:
                             mp3_data += chunk
 
                         self.audio_file_size_list.append(audio_file_size)
-                        print(self.audio_file_size_list)
                         self.audio_file_data_list.append(mp3_data)
                         received_md5_hash = s.recv(1024).decode()
                         print(f"\n** File received **\n")
-                        print(f"\n From Fdn Sub: MD5 Hash for chosen song = {received_md5_hash}")
+                        print(f"\nFrom Fdn Sub: MD5 Hash for chosen song = {received_md5_hash}")
 
                         with open("Received " + song_choice + '.mp3', 'wb') as f:
                             f.write(mp3_data)

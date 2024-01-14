@@ -54,11 +54,14 @@ class AuthPrimary:
             print(f"Connected to Bootstrap Server and sent info: {client_info}")
 
             if sock.recv(1024).decode() == "Ready to provide controlNode list":
-                # Receive the control node ips
+                sock.sendall(b"Send controlNode list")
+                # Receive the control node ips and ports
                 self.control_node_ips = json.loads(sock.recv(1024).decode())
                 print(f"\nReceived controlNode ips: {self.control_node_ips}")
                 self.control_node_ports = json.loads(sock.recv(1024).decode())
                 print(f"Received controlNode ports: {self.control_node_ports}")
+
+                sock.sendall(b"Control Nodes Received")
 
             self.authSub_file = sock.recv(1024).decode()
             print(f"\nReceived file data:\n{self.authSub_file}")

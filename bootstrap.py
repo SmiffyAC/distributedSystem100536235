@@ -58,15 +58,18 @@ class BootstrapServer:
             elif node_info['name'] == 'authPrimary':
                 print(f"\nAuth Primary connected with info: {node_info}")
                 print(f"Auth Primary connected from: {addr}\n")
-                self.handle_auth_primary(node, node_info)
+                threading.Thread(target=self.handle_auth_primary, args=(node, node_info)).start()
+                # self.handle_auth_primary(node, node_info)
 
             elif node_info['name'] == 'fdnPrimary':
                 print(f"\nFdn Primary connected with info: {node_info}")
                 print(f"Fdn Primary connected from: {addr}\n")
-                self.handle_fdn_primary(node, node_info)
+                threading.Thread(target=self.handle_fdn_primary, args=(node, node_info)).start()
+                # self.handle_fdn_primary(node, node_info)
 
             elif node_info['name'] == 'client':
-                self.handle_client(node, node_info)
+                threading.Thread(target=self.handle_client, args=(node, node_info)).start()
+                # self.handle_client(node, node_info)
 
         except Exception as e:
             print(f"Error: {e}")
@@ -103,7 +106,7 @@ class BootstrapServer:
                 })
         self.control_nodes[0].sendall(auth_instruction.encode('utf-8'))
         print("Sent start_PrimaryAuth")
-
+        time.sleep(1)
         fdn_instruction = json.dumps({
                     "command": "start_PrimaryFdn",
                 })
@@ -118,28 +121,34 @@ class BootstrapServer:
 
         sock.sendall(b"Ready to provide controlNode list")
         print("Sent Ready to provide controlNode list message")
-        # Send the list of control node ips
-        control_node_ips = json.dumps(self.control_node_ips)
-        print(f"JSON control node ips: {control_node_ips}")
-        sock.sendall(control_node_ips.encode())
-        # Send the list of control node ports
-        control_node_port_list = json.dumps(self.control_node_ports)
-        print(f"JSON control node port list: {control_node_port_list}")
-        sock.sendall(control_node_port_list.encode())
+        auth_primary_message = sock.recv(1024).decode()
+        print(f"Received authPrimary message: {auth_primary_message}")
+        if auth_primary_message == "Send controlNode list":
+            # Send the list of control node ips
+            control_node_ips = json.dumps(self.control_node_ips)
+            print(f"JSON control node ips: {control_node_ips}")
+            sock.sendall(control_node_ips.encode())
+            # Send the list of control node ports
+            control_node_port_list = json.dumps(self.control_node_ports)
+            print(f"JSON control node port list: {control_node_port_list}")
+            sock.sendall(control_node_port_list.encode())
 
-        file_path = "clientLogins.txt"
-        with open(file_path, 'r') as file:
-            file_content = file.read()
+        auth_primary_message = sock.recv(1024).decode()
 
-        print(f"File content to send: {file_content}")
-        sock.sendall(file_content.encode('utf-8'))
+        if auth_primary_message == "Control Nodes Received":
+            file_path = "clientLogins.txt"
+            with open(file_path, 'r') as file:
+                file_content = file.read()
 
-        handle_heartbeat_thread = threading.Thread(target=self.handle_heartbeat, args=(sock, node_info))
-        handle_heartbeat_thread.daemon = True
-        handle_heartbeat_thread.start()
-        # self.handle_heartbeat(sock)
+            print(f"File content to send: {file_content}")
+            sock.sendall(file_content.encode('utf-8'))
 
-        # ADD STUFF ABOUT HEARTBEAT FOR KILLING NODES
+            handle_heartbeat_thread = threading.Thread(target=self.handle_heartbeat, args=(sock, node_info))
+            handle_heartbeat_thread.daemon = True
+            handle_heartbeat_thread.start()
+            # self.handle_heartbeat(sock)
+
+            # ADD STUFF ABOUT HEARTBEAT FOR KILLING NODES
 
     def handle_heartbeat(self, sock, node_info):
         print(f"\n ** Receiving {node_info['name']} Heartbeats **")
@@ -194,81 +203,89 @@ class BootstrapServer:
 
         sock.sendall(b"Ready to provide controlNode list")
         print("Sent Ready to provide controlNode list message")
-        # Send the list of control node ips
-        control_node_ips = json.dumps(self.control_node_ips)
-        print(f"JSON control node ips: {control_node_ips}")
-        sock.sendall(control_node_ips.encode())
-        # Send the list of control node ports
-        control_node_port_list = json.dumps(self.control_node_ports)
-        print(f"JSON control node port list: {control_node_port_list}")
-        sock.sendall(control_node_port_list.encode())
-
-        # ADD STUFF FOR SENDING THE AUDIO FILES
-
-        # Get list of all files in the 'audio_files' folder
-        all_files = os.listdir('audio_files/using')
-
-        # Filter out only audio files, assuming .mp3 extension
-        audio_file_paths = [file for file in all_files if file.endswith('.mp3')]
-
-        print(f"Audio file paths: {audio_file_paths}")
-
-        # Send the number of files to expect
-        number_of_files = len(audio_file_paths)
-        print(f"Number of audio files to send: {number_of_files}")
-
-        # Tell node how many files to expect
-        sock.sendall(number_of_files.to_bytes(8, byteorder='big'))
-
-        # Send the list of audio files to chose from
-        audio_file_list = json.dumps(audio_file_paths)
-        print(f"JSON audio file list: {audio_file_list}")
-        print(f"JSON audio file list ENCODED: {audio_file_list.encode()}")
-        sock.sendall(audio_file_list.encode())
+        auth_primary_message = sock.recv(1024).decode()
+        print(f"Received authPrimary message: {auth_primary_message}")
+        if auth_primary_message == "Send controlNode list":
+            # Send the list of control node ips
+            control_node_ips = json.dumps(self.control_node_ips)
+            print(f"JSON control node ips: {control_node_ips}")
+            sock.sendall(control_node_ips.encode())
+            # Send the list of control node ports
+            control_node_port_list = json.dumps(self.control_node_ports)
+            print(f"JSON control node port list: {control_node_port_list}")
+            sock.sendall(control_node_port_list.encode())
 
         fdn_primary_message = sock.recv(1024).decode()
-        if fdn_primary_message == "Ready to receive audio files":
-            file_index = 0
 
-            while file_index < number_of_files:
-                print(audio_file_paths[file_index])
-                with open("audio_files/using/" + audio_file_paths[file_index], 'rb') as file:
-                    mp3_file_content = file.read()
-                    md5_hash = hashlib.md5(mp3_file_content).hexdigest()
+        if fdn_primary_message == "Control Nodes Received":
+            # ADD STUFF FOR SENDING THE AUDIO FILES
 
-                sock.sendall(len(mp3_file_content).to_bytes(8, byteorder='big'))
-                print(f"Sent file size: {len(mp3_file_content)}")
-                sock.sendall(mp3_file_content)
-                sock.sendall(md5_hash.encode())
+            # Get list of all files in the 'audio_files' folder
+            all_files = os.listdir('audio_files/using')
 
-                fdn_primary_message_2 = sock.recv(1024).decode()
-                if fdn_primary_message_2 == "File received":
-                    print(f"fdnPrimary: File {file_index} received")
-                    file_index += 1
+            # Filter out only audio files, assuming .mp3 extension
+            audio_file_paths = [file for file in all_files if file.endswith('.mp3')]
 
-            # fdn_primary_message_3 = sock.recv(1024).decode()
-            #
-            # if fdn_primary_message_3 == "All files Received":
-            #     sock.sendall(b"Ready to provide fdnPrimary address")
-            #
-            #     message = sock.recv(1024).decode()
-            #     print(f"Received message: {message}")
-            #
-            #     if message == 'fdnPrimary address':
-            #         # print(f"Received message: {message}")
-            #         sock.sendall(self.fdn_primary_node_ip.encode('utf-8'))
-            #         print(f"Sent fdnPrimary address: {self.fdn_primary_node_ip}")
-            #         sock.sendall(self.fdn_primary_node_port.to_bytes(8, byteorder='big'))
-            #         print(f"Sent fdnPrimary port: {self.fdn_primary_node_port}")
+            print(f"Audio file paths: {audio_file_paths}")
 
-        # sock.sendall(b"Start heartbeat")
-        handle_heartbeat_thread = threading.Thread(target=self.handle_heartbeat, args=(sock, node_info))
-        handle_heartbeat_thread.daemon = True
-        handle_heartbeat_thread.start()
+            # Send the number of files to expect
+            number_of_files = len(audio_file_paths)
+            print(f"Number of audio files to send: {number_of_files}")
 
-        # self.handle_heartbeat(sock)
+            # Tell node how many files to expect
+            sock.sendall(number_of_files.to_bytes(8, byteorder='big'))
 
-        # ADD STUFF ABOUT HEARTBEAT FOR KILLING NODES
+            # Send the list of audio files to chose from
+            audio_file_list = json.dumps(audio_file_paths)
+            print(f"JSON audio file list: {audio_file_list}")
+            print(f"JSON audio file list ENCODED: {audio_file_list.encode()}")
+            sock.sendall(audio_file_list.encode())
+
+            fdn_primary_message = sock.recv(1024).decode()
+            if fdn_primary_message == "Ready to receive audio files":
+                file_index = 0
+
+                while file_index < number_of_files:
+                    print(audio_file_paths[file_index])
+                    with open("audio_files/using/" + audio_file_paths[file_index], 'rb') as file:
+                        mp3_file_content = file.read()
+                        md5_hash = hashlib.md5(mp3_file_content).hexdigest()
+
+                    sock.sendall(len(mp3_file_content).to_bytes(8, byteorder='big'))
+                    print(f"Sent file size: {len(mp3_file_content)}")
+                    sock.sendall(mp3_file_content)
+                    sock.sendall(md5_hash.encode())
+
+                    fdn_primary_message_2 = sock.recv(1024).decode()
+                    if fdn_primary_message_2 == "File received":
+                        print(f"fdnPrimary: File {file_index} received")
+                        file_index += 1
+
+                # fdn_primary_message_3 = sock.recv(1024).decode()
+                #
+                # if fdn_primary_message_3 == "All files Received":
+                #     sock.sendall(b"Ready to provide fdnPrimary address")
+                #
+                #     message = sock.recv(1024).decode()
+                #     print(f"Received message: {message}")
+                #
+                #     if message == 'fdnPrimary address':
+                #         # print(f"Received message: {message}")
+                #         sock.sendall(self.fdn_primary_node_ip.encode('utf-8'))
+                #         print(f"Sent fdnPrimary address: {self.fdn_primary_node_ip}")
+                #         sock.sendall(self.fdn_primary_node_port.to_bytes(8, byteorder='big'))
+                #         print(f"Sent fdnPrimary port: {self.fdn_primary_node_port}")
+
+            # sock.sendall(b"Start heartbeat")
+            handle_heartbeat_thread = threading.Thread(target=self.handle_heartbeat, args=(sock, node_info))
+            handle_heartbeat_thread.daemon = True
+            handle_heartbeat_thread.start()
+
+            # self.handle_heartbeat(sock)
+
+            # ADD STUFF ABOUT HEARTBEAT FOR KILLING NODES
+
+
 
     def handle_client(self, sock, node_info):
         sock.sendall(b"Welcome client")

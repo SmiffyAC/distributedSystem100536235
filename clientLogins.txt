@@ -7,3 +7,6 @@ appleman,green
 chandler,pizza
 batman,batbike
 lucy,apple
+robin,bird
+chris,derby
+joker,funny

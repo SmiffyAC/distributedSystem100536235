@@ -73,69 +73,72 @@ class FdnPrimary:
             print(f"Connected to Bootstrap Server and sent info: {client_info}")
 
             if sock.recv(1024).decode() == "Ready to provide controlNode list":
+                sock.sendall(b"Send controlNode list")
                 # Receive the control node ips
                 self.control_node_ips = json.loads(sock.recv(1024).decode())
                 print(f"Received controlNode ips: {self.control_node_ips}")
                 self.control_node_ports = json.loads(sock.recv(1024).decode())
                 print(f"Received controlNode ports: {self.control_node_ports}")
 
-                # RECEIVED THE AUDIO FILES
+                sock.sendall(b"Control Nodes Received")
 
-                self.number_of_files = int.from_bytes(sock.recv(8), byteorder='big')
-                print(f"Expected number of audio files: {self.number_of_files}")
+            # RECEIVED THE AUDIO FILES
 
-                audio_file_list = sock.recv(1024).decode()
-                self.audio_file_list = audio_file_list
-                self.json_audio_file_list = json.loads(audio_file_list)
-                print(f"From Bootstrap: Audio File List = {self.json_audio_file_list}")
+            self.number_of_files = int.from_bytes(sock.recv(8), byteorder='big')
+            print(f"Expected number of audio files: {self.number_of_files}")
 
-                sock.sendall(b"Ready to receive audio files")
-                print(f"Sent ready to receive audio files message")
+            audio_file_list = sock.recv(1024).decode()
+            self.audio_file_list = audio_file_list
+            self.json_audio_file_list = json.loads(audio_file_list)
+            print(f"From Bootstrap: Audio File List = {self.json_audio_file_list}")
 
-                file = 0
+            sock.sendall(b"Ready to receive audio files")
+            print(f"Sent ready to receive audio files message")
 
-                while file < self.number_of_files:
-                    audio_file_size_data = sock.recv(8)
-                    audio_file_size = int.from_bytes(audio_file_size_data, byteorder='big')
-                    print(f"Audio File size: {audio_file_size}")
+            file = 0
 
-                    mp3_data = b''
-                    while len(mp3_data) < audio_file_size:
-                        chunk = sock.recv(min(4096, audio_file_size - len(mp3_data)))
-                        if not chunk:
-                            break
-                        mp3_data += chunk
+            while file < self.number_of_files:
+                audio_file_size_data = sock.recv(8)
+                audio_file_size = int.from_bytes(audio_file_size_data, byteorder='big')
+                print(f"Audio File size: {audio_file_size}")
 
-                    self.audio_file_size_list.append(audio_file_size)
-                    print(self.audio_file_size_list)
-                    self.audio_file_data_list.append(mp3_data)
-                    md5_hash = sock.recv(1024)
-                    print(f"From Bootstrap: Provided MD5 Hash = {md5_hash}")
-                    print(md5_hash)
-                    self.md5_hash_list.append(md5_hash)
-                    print(f"File {file + 1} received\n")
-                    sock.sendall(b"File received")
-                    file += 1
+                mp3_data = b''
+                while len(mp3_data) < audio_file_size:
+                    chunk = sock.recv(min(4096, audio_file_size - len(mp3_data)))
+                    if not chunk:
+                         break
+                    mp3_data += chunk
+
+                self.audio_file_size_list.append(audio_file_size)
+                print(self.audio_file_size_list)
+                self.audio_file_data_list.append(mp3_data)
+                md5_hash = sock.recv(1024)
+                print(f"From Bootstrap: Provided MD5 Hash = {md5_hash}")
+                print(md5_hash)
+                self.md5_hash_list.append(md5_hash)
+                print(f"File {file + 1} received\n")
+                sock.sendall(b"File received")
+                file += 1
 
                 # sock.sendall(b"All files Received")
 
-                bootstrap_message = sock.recv(1024).decode()
-                print(f"\n** Received bootstrap message: {bootstrap_message} **\n")
+            bootstrap_message = sock.recv(1024).decode()
+            print(f"\n** Received bootstrap message: {bootstrap_message} **\n")
 
-                heartbeat_tread = threading.Thread(target=self.generate_fdn_subs)
-                heartbeat_tread.daemon = True
-                heartbeat_tread.start()
+            heartbeat_tread = threading.Thread(target=self.generate_fdn_subs)
+            heartbeat_tread.daemon = True
+            heartbeat_tread.start()
 
-                if bootstrap_message == "Start heartbeat":
-                    print("\n ** Bootstrap Heartbeat Started **")
-                    # # Start heartbeat thread to send heartbeats to bootstrap
-                    # heartbeat_tread = threading.Thread(target=self.send_heartbeat_to_bootstrap, args=(sock,))
-                    # heartbeat_tread.daemon = True
-                    # heartbeat_tread.start()
-                    self.send_heartbeat_to_bootstrap(sock)
+            if bootstrap_message == "Start heartbeat":
+                print("\n ** Bootstrap Heartbeat Started **")
+                # # Start heartbeat thread to send heartbeats to bootstrap
+                # heartbeat_tread = threading.Thread(target=self.send_heartbeat_to_bootstrap, args=(sock,))
+                # heartbeat_tread.daemon = True
+                # heartbeat_tread.start()
+                self.send_heartbeat_to_bootstrap(sock)
 
     def send_heartbeat_to_bootstrap(self, sock):
-        time.sleep(5)
+        # time.sleep(5)
         print("\n ** Heartbeat started **")
         while True:
             heartbeat_list = ["fdnPrimary", self.host, self.port, self.numOfFdnSubs]
