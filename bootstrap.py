@@ -153,23 +153,16 @@ class BootstrapServer:
     def handle_heartbeat(self, sock, node_info):
         print(f"\n ** Receiving {node_info['name']} Heartbeats **")
         sock.sendall(b"Start heartbeat")
-        # Set a timeout for the socket
-        # sock.settimeout(30)
         while True:
-            primary_name = None
             try:
                 heartbeat_message = sock.recv(1024).decode()
                 print(f"Heartbeat Received: {heartbeat_message}")
-                json_heartbeat = json.loads(heartbeat_message)
-                # Get the ip and port of the fdnSub that sent the heartbeat
-                primary_name = json_heartbeat[0]
-                primary_ip = json_heartbeat[1]
-                primary_port = json_heartbeat[2]
-                primary_num_of_subs = json_heartbeat[3]
-            # except socket.timeout:
-            #     print("Heartbeat timed out")
-            #     primary_name = node_info['name']
-            #     self.generate_new_primary(primary_name)
+                # json_heartbeat = json.loads(heartbeat_message)
+                if node_info['name'] == 'authPrimary':
+                    # Write the contents of the heartbeat to the clientLogins.txt file
+                    with open("clientLogins.txt", 'w') as file:
+                        file.write(heartbeat_message)
+                    print(f"\n** Updated clientLogins.txt file with new contents from {node_info['name']} **\n")
             except socket.error as e:
                 print(f"Heartbeat failed - Error: {e}")
                 primary_name = node_info['name']

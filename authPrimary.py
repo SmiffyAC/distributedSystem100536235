@@ -23,7 +23,7 @@ class AuthPrimary:
         self.subAuthWithLowestNumOfClients_port = None
         self.subAuthWithLowestNumOfClients_numOfConnectedClients = 0
         self.authSub_list = []
-        self.authSub_file = None
+        self.client_login_file_data = None
         self.numOfAuthSubs = 0
         print(f"AuthPrimary set up on: {self.host}, Node Port: {self.port}")
 
@@ -63,8 +63,13 @@ class AuthPrimary:
 
                 sock.sendall(b"Control Nodes Received")
 
-            self.authSub_file = sock.recv(1024).decode()
-            print(f"\nReceived file data:\n{self.authSub_file}")
+            self.client_login_file_data = sock.recv(1024).decode()
+            print(f"\nReceived file data:\n{self.client_login_file_data}")
+
+            # Create a new txt file for the received data
+            with open('clientLoginsLocal.txt', 'w') as file:
+                file.write(self.client_login_file_data)
+            print(f"Created new file with received data named clientLoginsLocal.txt")
 
             bootstrap_message = sock.recv(1024).decode()
 
@@ -85,11 +90,16 @@ class AuthPrimary:
     def send_heartbeat_to_bootstrap(self, sock):
         print("\n ** Heartbeat started **")
         while True:
-            heartbeat_list = ["authPrimary", self.host, self.port, self.numOfAuthSubs]
-            heartbeat = json.dumps(heartbeat_list)
-            print(f"Heartbeat Sent: {heartbeat}")
+            # heartbeat_list = ["authPrimary", self.host, self.port, self.numOfAuthSubs]
+            # heartbeat = json.dumps(heartbeat_list)
+            # print(f"Heartbeat Sent: {heartbeat}")
+            file_path = "clientLoginsLocal.txt"
+            with open(file_path, 'r') as file:
+                file_content = file.read()
+            print(f"HEARTBEAT: File content to send: {file_content}")
             try:
-                sock.sendall(heartbeat.encode())
+                # sock.sendall(heartbeat.encode())
+                sock.sendall(file_content.encode('utf-8'))
             except socket.error as e:
                 print(f"Failed to send heartbeat: {e}")
                 print(f"Closing program due to failed heartbeat send in 5 seconds.")
@@ -208,7 +218,7 @@ class AuthPrimary:
 
     def handle_client_connection(self, sock):
 
-        client_logins_file = 'clientLogins.txt'
+        client_logins_file = 'clientLoginsLocal.txt'
         while True:
             # Receive the client's username and password
             username = sock.recv(1024).decode()

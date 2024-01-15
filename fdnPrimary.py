@@ -141,11 +141,12 @@ class FdnPrimary:
         # time.sleep(5)
         print("\n ** Heartbeat started **")
         while True:
-            heartbeat_list = ["fdnPrimary", self.host, self.port, self.numOfFdnSubs]
-            heartbeat = json.dumps(heartbeat_list)
+            # heartbeat_list = ["fdnPrimary", self.host, self.port, self.numOfFdnSubs]
+            # heartbeat = json.dumps(heartbeat_list)
+            heartbeat = "fdnPrimary heartbeat"
             print(f"Heartbeat Sent: {heartbeat}")
             try:
-                sock.sendall(heartbeat.encode())
+                sock.sendall(heartbeat.encode('utf-8'))
             except socket.error as e:
                 print(f"Failed to send heartbeat: {e}")
                 print(f"Closing program due to failed heartbeat send in 5 seconds.")
