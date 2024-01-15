@@ -221,11 +221,19 @@ class AuthPrimary:
             with open(client_logins_file, 'r') as file:
                 existing_accounts = file.readlines()
 
-            # Check if the username already exists
+            # # Check if the username already exists
+            # account_exists = False
+            # for account in existing_accounts:
+            #     stored_username, _ = account.strip().split(',')
+            #     if username == stored_username:
+            #         account_exists = True
+            #         break
+
+            # Check if the username and password already exist together
             account_exists = False
             for account in existing_accounts:
-                stored_username, _ = account.strip().split(',')
-                if username == stored_username:
+                stored_username, stored_password = account.strip().split(',')
+                if username == stored_username and password == stored_password:
                     account_exists = True
                     break
 
