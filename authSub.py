@@ -16,8 +16,8 @@ class AuthSub:
         self.name = name
         self.host = ip_address_10
         self.port = self.find_open_port()
-        self.tokenSet = set()
-        self.numOfConnectedClients = 0
+        self.tokenSet = set()   # set of tokens
+        self.numOfConnectedClients = 0  # number of connected clients
         print(f"AuthSub set up on: {self.host}, Node Port: {self.port}")
 
     def find_open_port(self):
@@ -31,6 +31,7 @@ class AuthSub:
         raise Exception("No open ports available in the specified range.")
 
     def connect_to_authPrimary(self, auth_primary_ip, auth_primary_port):
+        # Connect to the authPrimary
         print(f"\nWaiting for authPrimary to be ready at {auth_primary_ip}:{auth_primary_port}")
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 
@@ -44,7 +45,6 @@ class AuthSub:
             print(f"Received message from Auth Primary: {auth_primary_message}")
             # Provide the authPrimary with the address and port of the authSub
             if auth_primary_message == "Address and Port":
-                # s.sendall(b"Address")
                 auth_sub_ip = self.host
                 s.sendall(auth_sub_ip.encode())
                 print(f"Sent AuthSub address: {self.host}")
@@ -59,6 +59,7 @@ class AuthSub:
                 self.send_heartbeat_to_authPrimary(s)
 
     def send_heartbeat_to_authPrimary(self, s):
+        # Send heartbeat to authPrimary
         time.sleep(5)
         while True:
             heartbeat_list = [self.host, self.port, self.numOfConnectedClients]
@@ -68,6 +69,7 @@ class AuthSub:
             try:
                 s.sendall(heartbeat.encode())
             except socket.error as e:
+                # If the heartbeat send fails, close the program
                 print(f"Failed to send heartbeat: {e}")
                 print(f"Closing program due to failed heartbeat send in 2 seconds.")
                 time.sleep(2)
@@ -76,6 +78,7 @@ class AuthSub:
             time.sleep(10)
 
     def accept_client_connection(self):
+        # Accept client connections
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             sock.bind((self.host, self.port))
             sock.listen()
@@ -88,12 +91,14 @@ class AuthSub:
 
                 if connection_message == 'client':
                     print(f"Accepted connection from client with info: {addr}")
+                    # Start a thread to handle the client connection
                     client_thread = threading.Thread(target=self.handle_client_connection, args=(node,))
                     client_thread.daemon = True
                     client_thread.start()
 
                 elif connection_message == 'fdnSub':
                     print(f"Accepted connection from client with info: {addr}")
+                    # Start a thread to handle the fdnSub connection
                     fdn_sub_thread = threading.Thread(target=self.handle_fdnSub_connection, args=(node,))
                     fdn_sub_thread.daemon = True
                     fdn_sub_thread.start()
@@ -105,6 +110,7 @@ class AuthSub:
         client_message = node.recv(1024).decode()
         print(f"Received message from client: {client_message}")
 
+        # Provide the client with a token
         if client_message == 'token':
             time_stamp = str(time.time())
             token = str(self.host) + "|" + str(self.port) + "|" + time_stamp
@@ -122,6 +128,7 @@ class AuthSub:
 
         print(f"Received token: {received_token}")
 
+        # Check if the token provided by fdnSub is valid
         if received_token in self.tokenSet:
             node.sendall(b'Valid token')
             print(f"\n**VALID TOKEN**\n")
@@ -131,15 +138,16 @@ class AuthSub:
 
 
 if __name__ == '__main__':
-
+    # Parse the command line arguments
     parser = argparse.ArgumentParser(description="Run AuthSub")
     parser.add_argument("ip", type=str, help="IP address to use")
     parser.add_argument("port", type=int, help="Port number to use")
-
     args = parser.parse_args()
-
+    # Start the authSub
     new_AuthSub = AuthSub(name="authSub")
+    # Start a thread to accept client connections
     connections_thread = threading.Thread(target=new_AuthSub.accept_client_connection)
     connections_thread.daemon = True
     connections_thread.start()
+    # Connect to the authPrimary
     new_AuthSub.connect_to_authPrimary(args.ip, args.port)

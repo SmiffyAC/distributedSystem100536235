@@ -17,16 +17,13 @@ class FdnSub:
         self.name = name
         self.host = ip_address_10
         self.port = self.find_open_port()
-        self.tokenSet = {}
         self.numOfConnectedClients = 0
-
         self.number_of_files = None
-        self.audio_file_list = []
-        self.json_audio_file_list = []
-
-        self.audio_file_size_list = []
-        self.audio_file_data_list = []
-        self.md5_hash_list = []
+        self.audio_file_list = []       # List of audio file paths
+        self.json_audio_file_list = []  # List of audio file paths in json format
+        self.audio_file_size_list = []  # List of audio file sizes
+        self.audio_file_data_list = []  # List of audio file data
+        self.md5_hash_list = []         # List of md5 hashes for each audio file
 
         print(f"FdnSub set up on: {self.host}, Node Port: {self.port}")
 
@@ -62,8 +59,7 @@ class FdnSub:
                 s.sendall(fdnSub_port.to_bytes(8, byteorder='big'))
                 print(f"Sent FdnSub port: {self.port}")
 
-            # Receive the audio files from the Fdn Primary
-
+            # Receive the number of audio files from the Fdn Primary
             self.number_of_files = int.from_bytes(s.recv(8), byteorder='big')
             print(f"\nExpected number of audio files: {self.number_of_files}")
 
@@ -73,6 +69,8 @@ class FdnSub:
             print(f"\nFrom FdnPrimary: Audio File List: {self.json_audio_file_list}\n")
 
             s.sendall(b"Ready to receive audio files")
+
+            # Receive the audio files from the Fdn Primary
 
             file = 0
 
@@ -99,6 +97,7 @@ class FdnSub:
 
             fdnPrimary_message_2 = s.recv(1024).decode()
 
+            # Start the heartbeat
             if fdnPrimary_message_2 == "Start heartbeat":
                 print("\n ** Heartbeat started **")
                 self.send_heartbeat_to_fdnPrimary(s)
@@ -113,6 +112,7 @@ class FdnSub:
             try:
                 s.sendall(heartbeat.encode())
             except socket.error as e:
+                # If the heartbeat fails, close the program
                 print(f"Failed to send heartbeat: {e}")
                 print(f"Closing program due to failed heartbeat send in 2 seconds.")
                 time.sleep(2)
@@ -132,6 +132,7 @@ class FdnSub:
                 connection_message = node.recv(1024).decode()
                 if connection_message == 'client':
                     print(f"Accepted connection from client with info: {addr}")
+                    # Increment the number of connected clients
                     self.numOfConnectedClients += 1
                     client_request_thread = threading.Thread(target=self.handle_client_request, args=(node, addr))
                     client_request_thread.daemon = True
@@ -147,12 +148,14 @@ class FdnSub:
 
                 client_token = node.recv(1024).decode()
 
+                # Check the token is valid
                 if self.check_token(client_token):
                     node.sendall(b"Ready to provide songs")
 
                     client_message = node.recv(1024).decode()
                     print(f"Received message from client: {client_message}")
 
+                    # Send the song list to the client
                     if client_message == 'song list':
                         audio_file_paths = self.audio_file_list
                         print(f"Audio file paths: {audio_file_paths}")
@@ -161,13 +164,16 @@ class FdnSub:
                         node.sendall(audio_file_list.encode())
                         print(f"Sent song list to client: {audio_file_list}")
 
+                        # Receive the song index from the client
                         song_index = int.from_bytes(node.recv(8), byteorder='big')
                         print(f"Song index: {song_index}")
 
                         node.sendall(self.audio_file_size_list[song_index].to_bytes(8, byteorder='big'))
                         print(f"Sent song size: {self.audio_file_size_list[song_index]}")
+                        # Send the song data to the client
                         node.sendall(self.audio_file_data_list[song_index])
                         print(f"Sent song data")
+                        # Send the md5 hash to the client
                         node.sendall(self.md5_hash_list[song_index])
                         print(f"Sent md5 hash {self.md5_hash_list[song_index]}")
 
@@ -178,9 +184,11 @@ class FdnSub:
                             self.numOfConnectedClients -= 1
                             break
                 else:
+                    # If the token is invalid, close the connection
                     node.sendall(b"Invalid token")
                     print(f"Invalid token")
                     node.close()
+                    # Decrement the number of connected clients
                     self.numOfConnectedClients -= 1
 
             except socket.error:
@@ -197,6 +205,7 @@ class FdnSub:
                 node.close()
 
     def check_token(self, token):
+        # Split the token into IP and port
 
         parts = token.split('|')
 
@@ -231,15 +240,16 @@ class FdnSub:
 
 
 if __name__ == '__main__':
-
+    # Parse the command line arguments
     parser = argparse.ArgumentParser(description="Run AuthSub")
     parser.add_argument("ip", type=str, help="IP address to use")
     parser.add_argument("port", type=int, help="Port number to use")
-
     args = parser.parse_args()
-
+    # Create a new AuthSub
     new_FdnSub = FdnSub(name="fdnSub")
+    # Start the thread to listen for client connections
     connections_thread = threading.Thread(target=new_FdnSub.handle_client_connection)
     connections_thread.daemon = True
     connections_thread.start()
+    # Connect to the Bootstrap Server
     new_FdnSub.connect_to_fdnPrimary(args.ip, args.port)

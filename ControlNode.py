@@ -19,9 +19,9 @@ class ControlNode:
         self.name = name
         self.host = ip_address_10
         self.port = self.find_open_port()
-        self.retry_delay = 5  # seconds for retrying connection
-        self.max_retries = 5  # maximum number of retry attempts
-        self.instance_creation_delay = 5  # seconds delay between node instance creations
+        self.retry_delay = 5                # Seconds for retrying connection
+        self.max_retries = 5                # Maximum number of retry attempts
+        self.instance_creation_delay = 5    # Seconds delay between node instance creations
 
     def find_open_port(self):
         # Iterate through the port range to find the first open port
@@ -45,22 +45,27 @@ class ControlNode:
                 initial_message = node.recv(1024).decode()
 
                 if initial_message == "authSub":
+                    # Receive the authPrimary address and port
                     print(f"Received connection from {addr} asking to start an authSub")
                     node.sendall(b"Address and Port")
                     auth_primary_ip = node.recv(1024).decode()
                     print(f"Received authPrimary address: {auth_primary_ip}")
                     auth_primary_port = int.from_bytes(node.recv(8), byteorder='big')
                     print(f"Received authPrimary port: {auth_primary_port}")
+                    # Start the authSub instance
                     threading.Thread(target=self.handle_subAuth_creation, args=(auth_primary_ip, auth_primary_port, 0)).start()
                 elif initial_message == "fdnSub":
+                    # Receive the fdnPrimary address and port
                     print(f"Received connection from {addr} asking to start an fdnSub")
                     node.sendall(b"Address and Port")
                     fdn_primary_ip = node.recv(1024).decode()
                     print(f"Received fdnPrimary address: {fdn_primary_ip}")
                     fdn_primary_port = int.from_bytes(node.recv(8), byteorder='big')
                     print(f"Received fdnPrimary port: {fdn_primary_port}")
+                    # Start the fdnSub instance
                     threading.Thread(target=self.handle_subFdn_creation, args=(fdn_primary_ip, fdn_primary_port, 0)).start()
                 else:
+                    # Close the connection
                     node.close()
 
     def connect_to_bootstrap(self, bootstrap_host, bootstrap_port):
@@ -96,26 +101,30 @@ class ControlNode:
         # Check the type of instruction
         if instruction_data.get('command') == 'start_PrimaryAuth':
             print("FROM BOOTSTRAP: start_PrimaryAuth")
+            # Start the authPrimary instance
             self.handle_authPrimary_creation()
 
         elif instruction_data.get('command') == 'start_PrimaryFdn':
             print("FROM BOOTSTRAP: start_PrimaryFdn")
+            # Start the fdnPrimary instance
             self.handle_fdnPrimary_creation()
 
     def handle_authPrimary_creation(self):
+        # Handle the creation of the authPrimary instance
         print(f"\n** Starting authPrimary.py and passing BS addr of {bootstrap_ip} and port {50000} **\n")
 
         pid = subprocess.Popen([sys.executable, "authPrimary.py", str(bootstrap_ip), str(50000)],
                                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NEW_CONSOLE).pid
 
     def handle_fdnPrimary_creation(self):
+        # Handle the creation of the fdnPrimary instance
         print(f"\n** Starting fdnPrimary.py and passing BS addr of {bootstrap_ip} and port {50000} **\n")
 
         pid = subprocess.Popen([sys.executable, "fdnPrimary.py", str(bootstrap_ip), str(50000)],
                                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NEW_CONSOLE).pid
 
     def handle_subAuth_creation(self, auth_primary_ip, auth_primary_port, delay):
-
+        # Handle the creation of the authSub instance
         # Delay
         time.sleep(delay)
 
@@ -125,7 +134,7 @@ class ControlNode:
                                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NEW_CONSOLE).pid
 
     def handle_subFdn_creation(self, fdn_primary_ip, fdn_primary_port, delay):
-
+        # Handle the creation of the fdnSub instance
         # Delay
         time.sleep(delay)
 
@@ -136,9 +145,10 @@ class ControlNode:
 
 
 if __name__ == '__main__':
-    # Create a control node instance with a unique name
+    # Create a control node instance
     control_node = ControlNode(name="controlNode")
-    # Connect the control node to the Bootstrap Server
     bootstrap_ip = open('bootstrap_ip.txt', 'r').read().strip()
+    # Start the control node thread
     threading.Thread(target=control_node.accept_connections).start()
+    # Connect to the Bootstrap Server
     control_node.connect_to_bootstrap(bootstrap_ip, 50000)

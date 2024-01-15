@@ -22,17 +22,9 @@ class FdnPrimary:
         self.name = name
         self.host = ip_address_10
         self.port = self.find_open_port()
-        self.fdnSub1_ip = None
-        self.fdnSub1_port = None
-        self.fdnSub1_numOfConnectedClients = 0
-        self.fdnSub2_ip = None
-        self.fdnSub2_port = None
-        self.fdnSub2_numOfConnectedClients = 0
-
         self.subFdnWithLowestNumOfClients_ip = None
         self.subFdnWithLowestNumOfClients_port = None
         self.subFdnWithLowestNumOfClients_numOfConnectedClients = 100
-
         self.fdnSub_list = []
         self.fdnSub_file = []
         self.numOfFdnSubs = 0
@@ -40,16 +32,14 @@ class FdnPrimary:
 
         threading.Thread(target=self.accept_client_connection).start()
 
-        self.control_node_ips = []  # List to store the control node IPs
-        self.control_node_ports = []  # List to store the control node ports
-
+        self.control_node_ips = []      # List to store the control node IPs
+        self.control_node_ports = []    # List to store the control node ports
         self.number_of_files = None
         self.audio_file_list = []
-        self.json_audio_file_list = []
-
-        self.audio_file_size_list = []
-        self.audio_file_data_list = []
-        self.md5_hash_list = []
+        self.json_audio_file_list = []  # List to store the audio file names
+        self.audio_file_size_list = []  # List to store the audio file sizes
+        self.audio_file_data_list = []  # List to store the audio file data
+        self.md5_hash_list = []         # List to store the md5 hashes
 
     def find_open_port(self):
         # Iterate through the port range to find the first open port
@@ -82,8 +72,7 @@ class FdnPrimary:
 
                 sock.sendall(b"Control Nodes Received")
 
-            # RECEIVED THE AUDIO FILES
-
+            # Receive the number of files to expect
             self.number_of_files = int.from_bytes(sock.recv(8), byteorder='big')
             print(f"Expected number of audio files: {self.number_of_files}")
 
@@ -94,6 +83,8 @@ class FdnPrimary:
 
             sock.sendall(b"Ready to receive audio files")
             print(f"Sent ready to receive audio files message")
+
+            # Receive the audio files
 
             file = 0
 
@@ -120,34 +111,29 @@ class FdnPrimary:
                 sock.sendall(b"File received")
                 file += 1
 
-                # sock.sendall(b"All files Received")
 
             bootstrap_message = sock.recv(1024).decode()
             print(f"\n** Received bootstrap message: {bootstrap_message} **\n")
 
+            # Generate the fdnSubs
             heartbeat_tread = threading.Thread(target=self.generate_fdn_subs)
             heartbeat_tread.daemon = True
             heartbeat_tread.start()
 
             if bootstrap_message == "Start heartbeat":
                 print("\n ** Bootstrap Heartbeat Started **")
-                # # Start heartbeat thread to send heartbeats to bootstrap
-                # heartbeat_tread = threading.Thread(target=self.send_heartbeat_to_bootstrap, args=(sock,))
-                # heartbeat_tread.daemon = True
-                # heartbeat_tread.start()
+                # Start to send heartbeats to bootstrap
                 self.send_heartbeat_to_bootstrap(sock)
 
     def send_heartbeat_to_bootstrap(self, sock):
-        # time.sleep(5)
         print("\n ** Heartbeat started **")
         while True:
-            # heartbeat_list = ["fdnPrimary", self.host, self.port, self.numOfFdnSubs]
-            # heartbeat = json.dumps(heartbeat_list)
             heartbeat = "fdnPrimary heartbeat"
             print(f"Heartbeat Sent: {heartbeat}")
             try:
                 sock.sendall(heartbeat.encode('utf-8'))
             except socket.error as e:
+                # If the heartbeat fails, close the program
                 print(f"Failed to send heartbeat: {e}")
                 print(f"Closing program due to failed heartbeat send in 5 seconds.")
                 time.sleep(5)
@@ -174,8 +160,10 @@ class FdnPrimary:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             sock.connect((control_node_ip, control_node_port))
 
+            # Send the control node the message to start an fdnSub
             sock.send(b"fdnSub")
 
+            # Provide the control node with the fdnPrimary address and port
             if sock.recv(1024).decode() == "Address and Port":
                 sock.sendall(self.host.encode())
                 print(f"Sent FdnPrimary address: {self.host}")
@@ -183,6 +171,7 @@ class FdnPrimary:
                 print(f"Sent FdnPrimary port: {self.port}")
 
     def accept_client_connection(self):
+        # Accept connections from clients
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             sock.bind((self.host, self.port))
             sock.listen()
@@ -196,9 +185,11 @@ class FdnPrimary:
 
                 if connection_message == 'fdnSub':
                     time.sleep(0.5)
+                    # Handle the fdnSub connection
                     threading.Thread(target=self.handle_fdnSub_connection, args=(node, addr)).start()
 
                 elif connection_message == 'client':
+                    # Handle the client connection
                     threading.Thread(target=self.handle_client_connection, args=(node,)).start()
 
     def handle_fdnSub_connection(self, sock, addr):
@@ -282,11 +273,6 @@ class FdnPrimary:
             # Get the number of connected clients
             hb_num_of_connected_clients = int(json_heartbeat[2])
 
-            # print(f"\nhb_fdn_sub_ip: {hb_fdn_sub_ip}")
-            # print(f"hb_fdn_sub_port: {hb_fdn_sub_port}")
-            # print(f"hb_num_of_connected_clients: {hb_num_of_connected_clients}\n")
-            # print(f"subFdnWithLowestNumOfClients_numOfConnectedClients: {self.subFdnWithLowestNumOfClients_numOfConnectedClients}")
-
             print(f"Received heartbeat message from {hb_fdn_sub_ip}, {hb_fdn_sub_port}: {json_heartbeat}")
 
             if self.subFdnWithLowestNumOfClients_ip is None:
@@ -311,7 +297,6 @@ class FdnPrimary:
                 print("No new subFdn with lowest number of clients")
                 print(f"Current subFdn with lowest number of clients: {self.subFdnWithLowestNumOfClients_ip}, {self.subFdnWithLowestNumOfClients_port}, {self.subFdnWithLowestNumOfClients_numOfConnectedClients}")
 
-            # time.sleep(5)
 
     def handle_client_connection(self, sock):
         try:
@@ -340,11 +325,12 @@ class FdnPrimary:
 
 
 if __name__ == '__main__':
+    # Parse the command line arguments
     parser = argparse.ArgumentParser(description="Run FdnPrimary")
     parser.add_argument("ip", type=str, help="IP address to use")
     parser.add_argument("port", type=int, help="Port number to use")
-
     args = parser.parse_args()
-
+    # Create the FdnPrimary
     new_FdnPrimary = FdnPrimary(name="fdnPrimary")
+    # Connect to the Bootstrap Server
     new_FdnPrimary.connect_to_bootstrap(args.ip, args.port)

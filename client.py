@@ -9,18 +9,16 @@ class Client:
         # Initialize the client with a name, host, and port
         node_name = socket.gethostname()
         hostname, aliases, ip_addresses = socket.gethostbyname_ex(node_name)
-
         # Filter for IP addresses that start with 10
         ip_address_10 = next((ip for ip in ip_addresses if ip.startswith('10')), None)
         self.name = name
         self.host = ip_address_10
         self.port = self.find_open_port()
-        self.token = None
+        self.token = None   # token received from AuthSub
         self.audio_file_list = []
-        self.json_audio_file_list = []
-
-        self.audio_file_size_list = []
-        self.audio_file_data_list = []
+        self.json_audio_file_list = []  # list of mp3 file names
+        self.audio_file_size_list = []  # list of mp3 file sizes
+        self.audio_file_data_list = []  # list of mp3 data
 
     def find_open_port(self):
         # Iterate through the port range to find the first open port
@@ -47,11 +45,14 @@ class Client:
 
             if response == 'Welcome client':
                 if self.token is None:
+                    # Client is NOT authenticated, so connect to AuthPrimary
                     self.handle_auth(sock)
                 else:
+                    # Client is authenticated, so connect to FdnPrimary
                     self.handle_fdn(sock)
 
     def handle_auth(self, sock):
+        # Ask for the authPrimary address
         sock.sendall(b"authPrimary address")
         # Wait for auth address from server
         auth_primary_ip = sock.recv(1024).decode()
@@ -59,10 +60,11 @@ class Client:
 
         auth_primary_port = int.from_bytes(sock.recv(8), byteorder='big')
         print(f"From Bootstrap: Auth Primary port: {auth_primary_port}")
-
+        # Connect to the authPrimary
         self.connect_to_authPrimary(auth_primary_ip, auth_primary_port)
 
     def connect_to_authPrimary(self, auth_primary_ip, auth_primary_port):
+        # Connect to the AuthPrimary
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.connect((auth_primary_ip, auth_primary_port))
 
@@ -97,10 +99,11 @@ class Client:
             print(f"From AuthPrimary: Auth Sub address = {auth_sub_ip}")
             auth_sub_port = int.from_bytes(s.recv(8), byteorder='big')
             print(f"From AuthPrimary: Auth Sub port = {auth_sub_port}")
-
+            # Connect to the authSub
             self.connect_to_authSub(auth_sub_ip, auth_sub_port)
 
     def connect_to_authSub(self, auth_sub_ip, auth_sub_port):
+        # Connect to the AuthSub
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 
             s.connect((auth_sub_ip, auth_sub_port))
@@ -108,8 +111,8 @@ class Client:
             while True:
                 s.sendall(b"client")
 
+                # Receive token from AuthSub
                 authsub_message = s.recv(1024).decode()
-
                 if authsub_message == "Ready to provide token":
 
                     s.sendall(b"token")
@@ -121,9 +124,11 @@ class Client:
                     if self.token is not None:
                         break
 
+            # Connect to Bootstrap to ask for the fdnPrimary address
             self.connect_to_bootstrap(bootstrap_ip, bootstrap_port)
 
     def handle_fdn(self, sock):
+        # Ask for the fdnPrimary address
         sock.sendall(b"fdnPrimary address")
 
         # Wait for fdn address from server
@@ -132,10 +137,11 @@ class Client:
 
         fdn_primary_port = int.from_bytes(sock.recv(8), byteorder='big')
         print(f"From Bootstrap: Fdn Primary port = {fdn_primary_port}")
-
+        # Connect to the fdnPrimary
         self.connect_to_fdnPrimary(fdn_primary_ip, fdn_primary_port)
 
     def connect_to_fdnPrimary(self, fdn_primary_ip, fdn_primary_port):
+        # Connect to the FdnPrimary
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.connect((fdn_primary_ip, fdn_primary_port))
 
@@ -152,10 +158,11 @@ class Client:
             print(f"From FdnPrimary: Fdn Sub address = {fdn_sub_ip}")
             fdn_sub_port = int.from_bytes(s.recv(8), byteorder='big')
             print(f"From FdnPrimary: Fdn Sub port = {fdn_sub_port}")
-
+            # Connect to the fdnSub
             self.connect_to_fdnSub(fdn_sub_ip, fdn_sub_port)
 
     def connect_to_fdnSub(self, fdn_sub_ip, fdn_sub_port):
+        # Connect to the FdnSub
         print(f"Connecting to Fdn Sub at {fdn_sub_ip}:{fdn_sub_port}")
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 
@@ -191,13 +198,14 @@ class Client:
                         print(f"\nFrom Fdn Sub: Audio file list: \n{display_audio_file_list}\n")
 
                         while True:
+                            # Ask the user to choose a song
                             song_choice = input("\nEnter the name of the song you would like to download: ")
                             song_file_name = song_choice + ".mp3"
                             if song_file_name in self.json_audio_file_list:
-
                                 print(f"\nSong file name = {song_file_name}")
                                 song_index = json_audio_file_list.index(song_file_name)
                                 print(f"Index of chosen song = {song_index}")
+                                # Send the index of the chosen song to the FdnSub
                                 s.sendall(song_index.to_bytes(8, byteorder='big'))
                                 break
                             elif song_file_name == ' .mp3':
@@ -207,10 +215,12 @@ class Client:
                                 print(f"\n !!! Song '{song_choice}' NOT found. Please try again. !!! \n")
                                 continue
 
+                        # Receive the size of the chosen song
                         audio_file_size_data = s.recv(8)
                         audio_file_size = int.from_bytes(audio_file_size_data, byteorder='big')
                         print(f"From Fdn Sub: Audio File size = {audio_file_size}")
 
+                        # Receive the chosen song
                         mp3_data = b''
                         while len(mp3_data) < audio_file_size:
                             chunk = s.recv(min(4096, audio_file_size - len(mp3_data)))
@@ -220,6 +230,7 @@ class Client:
 
                         self.audio_file_size_list.append(audio_file_size)
                         self.audio_file_data_list.append(mp3_data)
+                        # Receive the MD5 Hash of the chosen song
                         received_md5_hash = s.recv(1024).decode()
                         print(f"\n** File received **\n")
                         print(f"\nFrom Fdn Sub: MD5 Hash for chosen song = {received_md5_hash}")
@@ -229,6 +240,7 @@ class Client:
                             generated_md5_hash = hashlib.md5(mp3_data).hexdigest()
                             print(f"\nGenerated MD5 Hash from received file =  {generated_md5_hash}")
 
+                            # Compare the received MD5 Hash to the generated MD5 Hash
                             if received_md5_hash == generated_md5_hash:
                                 print("\n** MD5 Hashes match **\n")
                             else:

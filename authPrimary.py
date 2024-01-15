@@ -73,16 +73,19 @@ class AuthPrimary:
 
             bootstrap_message = sock.recv(1024).decode()
 
+            # Generate authSubs
             heartbeat_tread = threading.Thread(target=self.generate_auth_subs)
             heartbeat_tread.daemon = True
             heartbeat_tread.start()
 
+            # Start heartbeat to send heartbeats to bootstrap
             if bootstrap_message == "Start heartbeat":
                 print("\n ** Bootstrap Heartbeat Started **")
                 # Start heartbeat thread to send heartbeats to bootstrap
                 self.send_heartbeat_to_bootstrap(sock)
 
     def send_heartbeat_to_bootstrap(self, sock):
+        # Send the client login file data to the bootstrap server
         print("\n ** Heartbeat started **")
         while True:
             file_path = "clientLoginsLocal.txt"
@@ -92,6 +95,7 @@ class AuthPrimary:
             try:
                 sock.sendall(file_content.encode('utf-8'))
             except socket.error as e:
+                # If the heartbeat fails, close the program
                 print(f"Failed to send heartbeat: {e}")
                 print(f"Closing program due to failed heartbeat send in 5 seconds.")
                 time.sleep(5)
@@ -116,17 +120,21 @@ class AuthPrimary:
             time.sleep(1)
 
     def connect_to_control_node(self, control_node_ip, control_node_port):
+        # Connect to the randomly selected control node
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             sock.connect((control_node_ip, control_node_port))
 
+            # Send the control node the authSub message to start an authSub
             sock.send(b"authSub")
 
+            # Provide the control node with the address and port of the authPrimary
             if sock.recv(1024).decode() == "Address and Port":
                 sock.sendall(self.host.encode())
                 sock.sendall(self.port.to_bytes(8, byteorder='big'))
                 print(f"Sent AuthPrimary address {self.host} and port {self.port} to randomly selected control node\n")
 
     def accept_client_connection(self):
+        # Accept connections from clients
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             sock.bind((self.host, self.port))
             sock.listen()
@@ -140,10 +148,12 @@ class AuthPrimary:
                 if connection_message == 'authSub':
                     print(f"\nAccepted connection from {addr}")
                     print(f"Received connection message: {connection_message}")
+                    # Start a thread to handle the authSub connection
                     threading.Thread(target=self.handle_authSub_connection, args=(node, addr)).start()
                 elif connection_message == 'client':
                     print(f"\nAccepted connection from {addr}")
                     print(f"Received connection message: {connection_message}")
+                    # Start a thread to handle the client connection
                     threading.Thread(target=self.handle_client_connection, args=(node,)).start()
                 else:
                     node.close()
@@ -189,12 +199,14 @@ class AuthPrimary:
 
             print(f"Received heartbeat message from {hb_authsub_ip}, {hb_authsub_port}: {json_heartbeat}")
 
+            # If this is the first heartbeat received, set the subAuthWithLowestNumOfClients to this authSub
             if self.subAuthWithLowestNumOfClients_ip is None:
                 self.subAuthWithLowestNumOfClients_ip = hb_authsub_ip
                 self.subAuthWithLowestNumOfClients_port = hb_authsub_port
                 self.subAuthWithLowestNumOfClients_numOfConnectedClients = hb_num_of_connected_clients
                 print(f"New subAuth with lowest number of clients: {self.subAuthWithLowestNumOfClients_ip}, {self.subAuthWithLowestNumOfClients_port}, {self.subAuthWithLowestNumOfClients_numOfConnectedClients}")
 
+            # If the authSub that sent the heartbeat has a lower number of connected clients than the current subAuthWithLowestNumOfClients, set the subAuthWithLowestNumOfClients to this authSub
             elif hb_num_of_connected_clients < self.subAuthWithLowestNumOfClients_numOfConnectedClients:
                 self.subAuthWithLowestNumOfClients_ip = hb_authsub_ip
                 self.subAuthWithLowestNumOfClients_port = hb_authsub_port
@@ -208,7 +220,7 @@ class AuthPrimary:
             time.sleep(5)
 
     def handle_client_connection(self, sock):
-
+        # Handle the client connection
         client_logins_file = 'clientLoginsLocal.txt'
         while True:
             # Receive the client's username and password
@@ -221,14 +233,6 @@ class AuthPrimary:
             with open(client_logins_file, 'r') as file:
                 existing_accounts = file.readlines()
 
-            # # Check if the username already exists
-            # account_exists = False
-            # for account in existing_accounts:
-            #     stored_username, _ = account.strip().split(',')
-            #     if username == stored_username:
-            #         account_exists = True
-            #         break
-
             # Check if the username and password already exist together
             account_exists = False
             for account in existing_accounts:
@@ -238,7 +242,7 @@ class AuthPrimary:
                     break
 
             if account_exists:
-                # Inform client that username is taken
+                # Inform client that username has been found
                 print(f"\n** User {username} found! **\n")
                 sock.sendall("User found".encode())
                 break
@@ -271,12 +275,11 @@ class AuthPrimary:
 
 
 if __name__ == '__main__':
-
+    # Parse the command line arguments
     parser = argparse.ArgumentParser(description="Run AuthPrimary")
     parser.add_argument("ip", type=str, help="IP address to use")
     parser.add_argument("port", type=int, help="Port number to use")
-
     args = parser.parse_args()
-
+    # Create a new AuthPrimary
     new_AuthPrimary = AuthPrimary(name="authPrimary")
     new_AuthPrimary.connect_to_bootstrap(args.ip, args.port)

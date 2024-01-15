@@ -13,8 +13,8 @@ class BootstrapServer:
         self.auth_primary_node_ip = None  # Variable to store the authPrimary node IP
         self.auth_primary_node_port = None  # Variable to store the authPrimary port
         self.fdn_primary_node_ip = None  # Variable to store the fdnPrimary node
-        self.fdn_primary_node_port = None
-        self.nodes = {}  # Dictionary to store registered nodes
+        self.fdn_primary_node_port = None   # Variable to store the fdnPrimary port
+        self.nodes = {}
         self.client = None
         self.control_nodes = []  # List to store the control nodes
         self.control_node_ips = []  # List to store the control node IPs
@@ -22,9 +22,10 @@ class BootstrapServer:
         self.last_control_node_time = None  # Variable to store the time of the last control node registration
 
     def start_server(self):
+        # Starts the server and listens for connections
         node_name = socket.gethostname()
         hostname, aliases, ip_addresses = socket.gethostbyname_ex(node_name)
-        # Filter for IP addresses that start with 10
+        # Filter for IP addresses that start with 10 - for uni network machines
         ip_address_10 = next((ip for ip in ip_addresses if ip.startswith('10')), None)
         if ip_address_10:
             print(f"IP Address starting with '10': {ip_address_10}")
@@ -41,13 +42,14 @@ class BootstrapServer:
                 threading.Thread(target=self.handle_connection, args=(node, addr)).start()
 
     def handle_connection(self, node, addr):
+        # Handles a new connection
         try:
             data = node.recv(1024).decode('utf-8')
             node_info = json.loads(data)
             print(f"\nNODE INFO: {node_info}")
 
             # If the node is a control node add it to the control node list
-            #  if ten seconds have passed since the last control node registered, call startup
+            # If ten seconds have passed since the last control node registered, call startup
             if node_info['name'] == 'controlNode':
                 self.control_nodes.append(node)
                 self.control_node_ips.append(node_info['ip'])
@@ -81,24 +83,19 @@ class BootstrapServer:
             self.startup()
 
     def startup(self):
-        #     instruct control nodes to start up 6 mod control nodes node instances
-        #
-        #     e.g. if we have 3 control nodes detected, we would tell 2 to start 3 nodes, and 1 to start 2 nodes
-        #     ... then the rest of this code should work
-        # Determine the number of node.py instances each control node should start
-        # total_node_instances = 6
+        # Start the authPrimary and fdnPrimary nodes
         num_control_nodes = len(self.control_nodes)
 
         if num_control_nodes == 0:
             print("No control nodes available to start node instances.")
             return
 
-        # Calculate the number of instances per control node
         auth_instruction = json.dumps({
                     "command": "start_PrimaryAuth",
                 })
         self.control_nodes[0].sendall(auth_instruction.encode('utf-8'))
         print("Sent start_PrimaryAuth")
+
         time.sleep(1)
         fdn_instruction = json.dumps({
                     "command": "start_PrimaryFdn",
@@ -108,10 +105,13 @@ class BootstrapServer:
         print("Sent start_PrimaryFdn")
 
     def handle_auth_primary(self, sock, node_info):
+        # Handle the authPrimary node
 
+        # Store the authPrimary node IP and port
         self.auth_primary_node_ip = node_info['ip']
         self.auth_primary_node_port = node_info['port']
 
+        # Send the control node list to the authPrimary node
         sock.sendall(b"Ready to provide controlNode list")
         print("Sent Ready to provide controlNode list message")
         auth_primary_message = sock.recv(1024).decode()
@@ -129,6 +129,7 @@ class BootstrapServer:
         auth_primary_message = sock.recv(1024).decode()
 
         if auth_primary_message == "Control Nodes Received":
+            # Send the clientLogins.txt file to the authPrimary node
             file_path = "clientLogins.txt"
             with open(file_path, 'r') as file:
                 file_content = file.read()
@@ -136,11 +137,13 @@ class BootstrapServer:
             print(f"File content to send: {file_content}")
             sock.sendall(file_content.encode('utf-8'))
 
+            # Start the heartbeat thread
             handle_heartbeat_thread = threading.Thread(target=self.handle_heartbeat, args=(sock, node_info))
             handle_heartbeat_thread.daemon = True
             handle_heartbeat_thread.start()
 
     def handle_heartbeat(self, sock, node_info):
+        # Handle the heartbeat from the authPrimary node and fdnPrimary node
         print(f"\n ** Receiving {node_info['name']} Heartbeats **")
         sock.sendall(b"Start heartbeat")
         while True:
@@ -156,6 +159,7 @@ class BootstrapServer:
                 print(f"Heartbeat failed - Error: {e}")
                 primary_name = node_info['name']
                 sock.close()
+                # Generate a new primary node
                 self.generate_new_primary(primary_name)
                 break
 
@@ -178,10 +182,13 @@ class BootstrapServer:
             print("Sent start_PrimaryFdn")
 
     def handle_fdn_primary(self, sock, node_info):
+        # Handle the fdnPrimary node
 
+        # Store the fdnPrimary node IP and port
         self.fdn_primary_node_ip = node_info['ip']
         self.fdn_primary_node_port = node_info['port']
 
+        # Send the control node list to the fdnPrimary node
         sock.sendall(b"Ready to provide controlNode list")
         print("Sent Ready to provide controlNode list message")
         auth_primary_message = sock.recv(1024).decode()
@@ -199,6 +206,8 @@ class BootstrapServer:
         fdn_primary_message = sock.recv(1024).decode()
 
         if fdn_primary_message == "Control Nodes Received":
+            # Send the list of audio files to the fdnPrimary node
+
             # Get list of all files in the 'audio_files' folder
             all_files = os.listdir('audio_files/using')
 
@@ -224,6 +233,7 @@ class BootstrapServer:
             if fdn_primary_message == "Ready to receive audio files":
                 file_index = 0
 
+                # Send the audio files to the fdnPrimary node
                 while file_index < number_of_files:
                     print(audio_file_paths[file_index])
                     with open("audio_files/using/" + audio_file_paths[file_index], 'rb') as file:
@@ -240,11 +250,13 @@ class BootstrapServer:
                         print(f"fdnPrimary: File {file_index} received")
                         file_index += 1
 
+            # Start the heartbeat thread
             handle_heartbeat_thread = threading.Thread(target=self.handle_heartbeat, args=(sock, node_info))
             handle_heartbeat_thread.daemon = True
             handle_heartbeat_thread.start()
 
     def handle_client(self, sock, node_info):
+        # Handle the client node
         sock.sendall(b"Welcome client")
 
         print(f"Connected Client info: {node_info['ip'], node_info['port']}")
@@ -253,12 +265,14 @@ class BootstrapServer:
         print(f"Received message: {message}")
 
         if message == 'authPrimary address':
+            # Send the authPrimary node IP and port to the client
             sock.sendall(self.auth_primary_node_ip.encode('utf-8'))
             print(f"Sent authPrimary address: {self.auth_primary_node_ip}")
             sock.sendall(self.auth_primary_node_port.to_bytes(8, byteorder='big'))
             print(f"Sent authPrimary port: {self.auth_primary_node_port}")
 
         elif message == 'fdnPrimary address':
+            # Send the fdnPrimary node IP and port to the client
             sock.sendall(self.fdn_primary_node_ip.encode('utf-8'))
             print(f"Sent fdnPrimary address: {self.fdn_primary_node_ip}")
             sock.sendall(self.fdn_primary_node_port.to_bytes(8, byteorder='big'))
@@ -266,5 +280,6 @@ class BootstrapServer:
 
 
 if __name__ == '__main__':
+    # Start the Bootstrap Server
     server = BootstrapServer()
     server.start_server()
