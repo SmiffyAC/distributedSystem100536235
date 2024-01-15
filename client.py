@@ -53,7 +53,6 @@ class Client:
 
     def handle_auth(self, sock):
         sock.sendall(b"authPrimary address")
-
         # Wait for auth address from server
         auth_primary_ip = sock.recv(1024).decode()
         print(f"From Bootstrap: Auth Primary address: {auth_primary_ip}")

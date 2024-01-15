@@ -139,29 +139,6 @@ class FdnSub:
                 else:
                     node.close()
 
-                # try:
-                #     connection_message = node.recv(1024).decode()
-                #     if connection_message == 'client':
-                #         print(f"Accepted connection from client with info: {addr}")
-                #         self.numOfConnectedClients += 1
-                #
-                #         threading.Thread(target=self.handle_client_request, args=(node, addr)).start()
-                #
-                #
-                #     else:
-                #         node.close()
-
-                # except socket.error:
-                #     print("\n** Client disconnected unexpectedly. **")
-                #     self.numOfConnectedClients -= 1
-                #     print(f"Number of connected clients change to: {self.numOfConnectedClients}")
-                #     print("** Connection with client closed. **\n")
-                # except Exception as e:
-                #     print(f"An unexpected error occurred: {e}")
-                #
-                # finally:
-                #     node.close()
-
     def handle_client_request(self, node, addr):
         while True:
             try:

@@ -12,3 +12,6 @@ chris,derby
 joker,funny
 bruce,cat
 peter,venom
+ninja,warrior
+manny,mill
+flash,gordan

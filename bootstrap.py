@@ -59,17 +59,14 @@ class BootstrapServer:
                 print(f"\nAuth Primary connected with info: {node_info}")
                 print(f"Auth Primary connected from: {addr}\n")
                 threading.Thread(target=self.handle_auth_primary, args=(node, node_info)).start()
-                # self.handle_auth_primary(node, node_info)
 
             elif node_info['name'] == 'fdnPrimary':
                 print(f"\nFdn Primary connected with info: {node_info}")
                 print(f"Fdn Primary connected from: {addr}\n")
                 threading.Thread(target=self.handle_fdn_primary, args=(node, node_info)).start()
-                # self.handle_fdn_primary(node, node_info)
 
             elif node_info['name'] == 'client':
                 threading.Thread(target=self.handle_client, args=(node, node_info)).start()
-                # self.handle_client(node, node_info)
 
         except Exception as e:
             print(f"Error: {e}")
@@ -96,11 +93,7 @@ class BootstrapServer:
             print("No control nodes available to start node instances.")
             return
 
-        # # Calculate the number of instances per control node
-        # instances_per_node = total_node_instances // num_control_nodes
-        # extra_instances = total_node_instances % num_control_nodes
-        #
-        # # print(f"Starting up {total_node_instances} node instances using {num_control_nodes} control nodes.")
+        # Calculate the number of instances per control node
         auth_instruction = json.dumps({
                     "command": "start_PrimaryAuth",
                 })
@@ -146,9 +139,6 @@ class BootstrapServer:
             handle_heartbeat_thread = threading.Thread(target=self.handle_heartbeat, args=(sock, node_info))
             handle_heartbeat_thread.daemon = True
             handle_heartbeat_thread.start()
-            # self.handle_heartbeat(sock)
-
-            # ADD STUFF ABOUT HEARTBEAT FOR KILLING NODES
 
     def handle_heartbeat(self, sock, node_info):
         print(f"\n ** Receiving {node_info['name']} Heartbeats **")
@@ -157,7 +147,6 @@ class BootstrapServer:
             try:
                 heartbeat_message = sock.recv(1024).decode()
                 print(f"Heartbeat Received: {heartbeat_message}")
-                # json_heartbeat = json.loads(heartbeat_message)
                 if node_info['name'] == 'authPrimary':
                     # Write the contents of the heartbeat to the clientLogins.txt file
                     with open("clientLogins.txt", 'w') as file:
@@ -172,7 +161,6 @@ class BootstrapServer:
 
     def generate_new_primary(self, primary_name):
         print(f"Primary {primary_name} failed. Generating new primary in 15 seconds...")
-        # time.sleep(15)
         for i in range(14, 0, -1):
             print(f"{i} seconds...")
             time.sleep(1)
@@ -211,8 +199,6 @@ class BootstrapServer:
         fdn_primary_message = sock.recv(1024).decode()
 
         if fdn_primary_message == "Control Nodes Received":
-            # ADD STUFF FOR SENDING THE AUDIO FILES
-
             # Get list of all files in the 'audio_files' folder
             all_files = os.listdir('audio_files/using')
 
@@ -254,31 +240,9 @@ class BootstrapServer:
                         print(f"fdnPrimary: File {file_index} received")
                         file_index += 1
 
-                # fdn_primary_message_3 = sock.recv(1024).decode()
-                #
-                # if fdn_primary_message_3 == "All files Received":
-                #     sock.sendall(b"Ready to provide fdnPrimary address")
-                #
-                #     message = sock.recv(1024).decode()
-                #     print(f"Received message: {message}")
-                #
-                #     if message == 'fdnPrimary address':
-                #         # print(f"Received message: {message}")
-                #         sock.sendall(self.fdn_primary_node_ip.encode('utf-8'))
-                #         print(f"Sent fdnPrimary address: {self.fdn_primary_node_ip}")
-                #         sock.sendall(self.fdn_primary_node_port.to_bytes(8, byteorder='big'))
-                #         print(f"Sent fdnPrimary port: {self.fdn_primary_node_port}")
-
-            # sock.sendall(b"Start heartbeat")
             handle_heartbeat_thread = threading.Thread(target=self.handle_heartbeat, args=(sock, node_info))
             handle_heartbeat_thread.daemon = True
             handle_heartbeat_thread.start()
-
-            # self.handle_heartbeat(sock)
-
-            # ADD STUFF ABOUT HEARTBEAT FOR KILLING NODES
-
-
 
     def handle_client(self, sock, node_info):
         sock.sendall(b"Welcome client")
@@ -289,14 +253,12 @@ class BootstrapServer:
         print(f"Received message: {message}")
 
         if message == 'authPrimary address':
-            # print(f"Received message: {message}")
             sock.sendall(self.auth_primary_node_ip.encode('utf-8'))
             print(f"Sent authPrimary address: {self.auth_primary_node_ip}")
             sock.sendall(self.auth_primary_node_port.to_bytes(8, byteorder='big'))
             print(f"Sent authPrimary port: {self.auth_primary_node_port}")
 
         elif message == 'fdnPrimary address':
-            # print(f"Received message: {message}")
             sock.sendall(self.fdn_primary_node_ip.encode('utf-8'))
             print(f"Sent fdnPrimary address: {self.fdn_primary_node_ip}")
             sock.sendall(self.fdn_primary_node_port.to_bytes(8, byteorder='big'))
